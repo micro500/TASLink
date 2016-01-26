@@ -1,0 +1,39 @@
+CONFIG PROHIBIT=P144;
+CONFIG PROHIBIT=P69;
+CONFIG PROHIBIT=P60;
+
+NET CLK            LOC="P94"  | IOSTANDARD=LVTTL | PERIOD=31.25ns;               # CLK
+NET RX             LOC="P101" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST;          # RX  # from PC
+NET TX             LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX  # to PC
+
+
+NET nes_latch      LOC="P47"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;                                # B15  # from DS # orange
+NET nes_clk        LOC="P51"  | IOSTANDARD=LVTTL;                                # A1  # from DS # red
+NET nes_dout       LOC="P56"  | IOSTANDARD=LVTTL;                                # A2  # to DS
+NET debug(0)       LOC="P58"  | IOSTANDARD=LVTTL;                                # A3
+NET debug(1)       LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
+NET debug(2)       LOC="P66"  | IOSTANDARD=LVTTL;                                # A5
+NET debug(3)       LOC="P67"  | IOSTANDARD=LVTTL;                                # A6
+NET p2_dout        LOC="P57"  | IOSTANDARD=LVTTL;                                # B12
+NET p2_latch       LOC="P55"  | IOSTANDARD=LVTTL;                                # B13
+NET p2_clock       LOC="P50"  | IOSTANDARD=LVTTL;                                # B14
+
+
+
+NET l(3)           LOC="P114" | IOSTANDARD=LVTTL;                                # C0
+NET l(2)           LOC="P116" | IOSTANDARD=LVTTL;                                # C2
+NET l(1)           LOC="P118" | IOSTANDARD=LVTTL;                                # C4
+NET l(0)           LOC="P120" | IOSTANDARD=LVTTL;                                # C6
+
+
+
+# blue (ribbon) - pen IRQ to DS
+
+# Connect A3 to yellow (ribbon)
+# Connect A2 to blue (ribbon)
+
+
+NET btn(3)         LOC="P115" | IOSTANDARD=LVTTL;                                #
+NET btn(2)         LOC="P117" | IOSTANDARD=LVTTL;                                #
+NET btn(1)         LOC="P119" | IOSTANDARD=LVTTL;                                #
+NET btn(0)         LOC="P121" | IOSTANDARD=LVTTL;                                #

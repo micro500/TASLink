@@ -30,15 +30,15 @@ use IEEE.NUMERIC_STD.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity shift_register2 is
+entity shift_register is
     Port ( latch : in  STD_LOGIC;
            clock : in  STD_LOGIC;
            din : in  STD_LOGIC_VECTOR (7 downto 0);
            dout : out  STD_LOGIC;
            clk : in std_logic);
-end shift_register2;
+end shift_register;
 
-architecture Behavioral of shift_register2 is
+architecture Behavioral of shift_register is
   signal latched_data : std_logic_vector(7 downto 0) := "11111111";
   signal prev_clk : std_logic := '1';
   

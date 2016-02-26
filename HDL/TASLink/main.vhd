@@ -50,13 +50,6 @@ architecture Behavioral of main is
     Port ( latch : in  STD_LOGIC;
            clock : in  STD_LOGIC;
            din : in  STD_LOGIC_VECTOR (7 downto 0);
-           dout : out  STD_LOGIC);
-  end component;
-  
-  component shift_register2 is
-    Port ( latch : in  STD_LOGIC;
-           clock : in  STD_LOGIC;
-           din : in  STD_LOGIC_VECTOR (7 downto 0);
            dout : out  STD_LOGIC;
            clk : in std_logic);
   end component;
@@ -127,24 +120,14 @@ architecture Behavioral of main is
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
 begin
-
---  sr: shift_register port map (latch => nes_latch_f,
---                               clock => nes_clk_f,
---                               din => button_data,
---                               dout => nes_dout);
                                
-  sr: shift_register2 port map (latch => nes_latch_f,
+  sr: shift_register port map (latch => nes_latch_f,
                                clock => nes_clk_f,
                                din => button_data,
                                dout => nes_dout,
                                clk => clk);
                                
---  p2_sr: shift_register port map (latch => nes_latch_f,
---                                  clock => p2_clk_f,
---                                  din => p2_button_data,
---                                  dout => p2_dout);
-                                  
-  p2_sr: shift_register2 port map (latch => nes_latch_f,
+  p2_sr: shift_register port map (latch => nes_latch_f,
                                   clock => p2_clk_f,
                                   din => p2_button_data,
                                   dout => p2_dout,

@@ -50,27 +50,32 @@ architecture Behavioral of main is
            tx_out : out STD_LOGIC);
   end component;
 
-  signal button_data : std_logic_vector(7 downto 0) := "11111111";
-  signal p2_button_data : std_logic_vector(7 downto 0) := "11111111";
-
-  signal nes_clk_f : std_logic;
-  signal nes_latch_f : std_logic;
-  
-  signal p2_clk_f : std_logic;
+  -- Filtered signals coming from the console
+  signal p1_clock_f : std_logic;
+  signal p1_latch_f : std_logic;
+  signal p2_clock_f : std_logic;
   signal p2_latch_f : std_logic;
   
-  signal nes_clk_toggle : std_logic;
-  signal nes_latch_toggle : std_logic;
-  signal nes_clk_toggle_f : std_logic;
-  signal nes_latch_toggle_f : std_logic;
+  -- Toggle signals, useful for monitoring when the FPGA detects a rising edge
+  signal p1_clock_toggle : std_logic;
+  signal p1_latch_toggle : std_logic;
+  signal p1_clock_f_toggle : std_logic;
+  signal p1_latch_f_toggle : std_logic;
+  signal p2_clock_toggle : std_logic;
+  signal p2_latch_toggle : std_logic;
+  signal p2_clock_f_toggle : std_logic;
+  signal p2_latch_f_toggle : std_logic;
+
+  signal button_data : std_logic_vector(7 downto 0) := "11111111";
+  signal p2_button_data : std_logic_vector(7 downto 0) := "11111111";
   
   signal data_from_uart : STD_LOGIC_VECTOR (7 downto 0);
   signal uart_data_recieved : STD_LOGIC := '0';
-	signal uart_byte_waiting : STD_LOGIC := '0';
+  signal uart_byte_waiting : STD_LOGIC := '0';
   
   signal data_to_uart : STD_LOGIC_VECTOR (7 downto 0) := (others => '0');
-	signal uart_buffer_full : STD_LOGIC;
-	signal uart_write : STD_LOGIC := '0';
+  signal uart_buffer_full : STD_LOGIC;
+  signal uart_write : STD_LOGIC := '0';
   
   signal uart_buffer_ptr : integer range 0 to 2 := 0;
   
@@ -92,26 +97,14 @@ architecture Behavioral of main is
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
 begin
-                               
-  sr: shift_register port map (latch => nes_latch_f,
-                               clock => nes_clk_f,
-                               din => button_data,
-                               dout => p1_d0,
-                               clk => clk);
-                               
-  p2_sr: shift_register port map (latch => nes_latch_f,
-                                  clock => p2_clk_f,
-                                  din => p2_button_data,
-                                  dout => p2_d0,
-                                  clk => clk);
-                               
-  latch_filter: filter port map (signal_in => p1_latch,
-                                 clk => CLK,
-                                 signal_out => nes_latch_f);
+
+  p1_latch_filter: filter port map (signal_in => p1_latch,
+                                    clk => CLK,
+                                    signal_out => p1_latch_f);
                                  
-  clock_filter: filter port map (signal_in => p1_clock,
-                                 clk => CLK,
-                                 signal_out => nes_clk_f);
+  p1_clock_filter: filter port map (signal_in => p1_clock,
+                                    clk => CLK,
+                                    signal_out => p1_clock_f);
                                  
   p2_latch_filter: filter port map (signal_in => p2_latch,
                                     clk => CLK,
@@ -119,8 +112,45 @@ begin
                                  
   p2_clock_filter: filter port map (signal_in => p2_clock,
                                     clk => CLK,
-                                    signal_out => p2_clk_f);
+                                    signal_out => p2_clock_f);
+                                    
+  p1latch_toggle: toggle port map (signal_in => p1_latch,
+                                   signal_out => p1_latch_toggle);
                                  
+  p1latch_f_toggle: toggle port map (signal_in => p1_latch_f,
+                                     signal_out => p1_latch_f_toggle);
+  
+  p1clk_toggle: toggle port map (signal_in => p1_clock,
+                                 signal_out => p1_clock_toggle);
+  
+  p1clock_f_toggle: toggle port map (signal_in => p1_clock_f,
+                                     signal_out => p1_clock_f_toggle);
+
+  p2latch_toggle: toggle port map (signal_in => p2_latch,
+                                   signal_out => p2_latch_toggle);
+                                 
+  p2latch_f_toggle: toggle port map (signal_in => p2_latch_f,
+                                     signal_out => p2_latch_f_toggle);
+  
+  p2clk_toggle: toggle port map (signal_in => p2_clock,
+                                 signal_out => p2_clock_toggle);
+  
+  p2clock_f_toggle: toggle port map (signal_in => p2_clock_f,
+                                     signal_out => p2_clock_f_toggle);
+
+
+  sr: shift_register port map (latch => p1_latch_f,
+                               clock => p1_clock_f,
+                               din => button_data,
+                               dout => p1_d0,
+                               clk => clk);
+                               
+  p2_sr: shift_register port map (latch => p1_latch_f,
+                                  clock => p2_clock_f,
+                                  din => p2_button_data,
+                                  dout => p2_d0,
+                                  clk => clk);
+                                  
   button_data <= button_queue(buffer_tail)(7 downto 0) when buffer_head /= buffer_tail else
                  button_queue(31)(7 downto 0) when buffer_tail = 0 else
                  button_queue(buffer_tail-1)(7 downto 0);
@@ -128,25 +158,7 @@ begin
   p2_button_data <= button_queue(buffer_tail)(15 downto 8) when buffer_head /= buffer_tail else
                     button_queue(31)(15 downto 8) when buffer_tail = 0 else
                     button_queue(buffer_tail-1)(15 downto 8);
-                 
-  --button_data <= not(btn) & "1111"; 
-  
-  --button_data <= btn(2) & "1111111" when btn(3) = '1' else
-  --               "11111111";
-  
-  
-  latch_toggle: toggle port map (signal_in => p1_latch,
-                                 signal_out => nes_latch_toggle);
-  
-  latch_f_toggle: toggle port map (signal_in => nes_latch_f,
-                                   signal_out => nes_latch_toggle_f);
-  
-  clk_toggle: toggle port map (signal_in => p1_clock,
-                               signal_out => nes_clk_toggle);
-  
-  clk_f_toggle: toggle port map (signal_in => nes_clk_f,
-                                 signal_out => nes_clk_toggle_f);
-                                 
+                                   
   uart1: UART port map (rx_data_out => data_from_uart,
                         rx_data_was_recieved => uart_data_recieved,
                         rx_byte_waiting => uart_byte_waiting,
@@ -246,8 +258,8 @@ uart_recieve_btye: process(CLK)
         end if;
       end if;
 
-      if (nes_latch_f /= prev_latch) then
-        if (nes_latch_f = '1') then
+      if (p1_latch_f /= prev_latch) then
+        if (p1_latch_f = '1') then
           if (windowed_mode = '1') then
             frame_timer <= 0;
             frame_timer_active <= '1';
@@ -268,7 +280,7 @@ uart_recieve_btye: process(CLK)
             end if;
           end if;
         end if;
-        prev_latch <= nes_latch_f;
+        prev_latch <= p1_latch_f;
       end if;
     end if;
   end process;
@@ -276,10 +288,10 @@ uart_recieve_btye: process(CLK)
 
   l <= std_logic_vector(to_unsigned(buffer_tail, 4));
     
-  debug(0) <= nes_latch_toggle;
+  debug(0) <= p1_latch_toggle;
   debug(1) <= p2_latch_f;
-  debug(2) <= nes_clk_toggle;
-  debug(3) <= p2_clk_f;
+  debug(2) <= p1_clock_toggle;
+  debug(3) <= p2_clock_f;
 
 end Behavioral;
 

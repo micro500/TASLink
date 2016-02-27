@@ -1,46 +1,18 @@
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date:    19:51:55 01/19/2016 
--- Design Name: 
--- Module Name:    main - Behavioral 
--- Project Name: 
--- Target Devices: 
--- Tool versions: 
--- Description: 
---
--- Dependencies: 
---
--- Revision: 
--- Revision 0.01 - File Created
--- Additional Comments: 
---
-----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
--- Uncomment the following library declaration if instantiating
--- any Xilinx primitives in this code.
---library UNISIM;
---use UNISIM.VComponents.all;
 
 entity main is
     Port ( CLK : in std_logic;
            RX : in std_logic;
            TX : out std_logic;
            btn : in  STD_LOGIC_VECTOR (3 downto 0);
-           nes_latch : in  STD_LOGIC;
-           nes_clk : in  STD_LOGIC;
-           nes_dout : out STD_LOGIC;
+           p1_latch : in  STD_LOGIC;
+           p1_clock : in  STD_LOGIC;
+           p1_d0 : out STD_LOGIC;
            p2_latch : in std_logic;
            p2_clock : in std_logic;
-           p2_dout : out std_logic;
+           p2_d0 : out std_logic;
            debug : out STD_LOGIC_VECTOR (3 downto 0);
            l: out STD_LOGIC_VECTOR(3 downto 0));
 end main;
@@ -124,20 +96,20 @@ begin
   sr: shift_register port map (latch => nes_latch_f,
                                clock => nes_clk_f,
                                din => button_data,
-                               dout => nes_dout,
+                               dout => p1_d0,
                                clk => clk);
                                
   p2_sr: shift_register port map (latch => nes_latch_f,
                                   clock => p2_clk_f,
                                   din => p2_button_data,
-                                  dout => p2_dout,
+                                  dout => p2_d0,
                                   clk => clk);
                                
-  latch_filter: filter port map (signal_in => nes_latch,
+  latch_filter: filter port map (signal_in => p1_latch,
                                  clk => CLK,
                                  signal_out => nes_latch_f);
                                  
-  clock_filter: filter port map (signal_in => nes_clk,
+  clock_filter: filter port map (signal_in => p1_clock,
                                  clk => CLK,
                                  signal_out => nes_clk_f);
                                  
@@ -163,13 +135,13 @@ begin
   --               "11111111";
   
   
-  latch_toggle: toggle port map (signal_in => nes_latch,
+  latch_toggle: toggle port map (signal_in => p1_latch,
                                  signal_out => nes_latch_toggle);
   
   latch_f_toggle: toggle port map (signal_in => nes_latch_f,
                                    signal_out => nes_latch_toggle_f);
   
-  clk_toggle: toggle port map (signal_in => nes_clk,
+  clk_toggle: toggle port map (signal_in => p1_clock,
                                signal_out => nes_clk_toggle);
   
   clk_f_toggle: toggle port map (signal_in => nes_clk_f,

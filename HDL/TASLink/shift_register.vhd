@@ -7,6 +7,7 @@ entity shift_register is
            clock : in  STD_LOGIC;
            din : in  STD_LOGIC_VECTOR (7 downto 0);
            dout : out  STD_LOGIC;
+           sin : in STD_LOGIC;
            clk : in std_logic);
 end shift_register;
 
@@ -33,7 +34,7 @@ shift_out: process(clk)
       
       if (timer_active = '1') then
         if (timer = 192) then
-          latched_data <= latched_data(6 downto 0) & '1';
+          latched_data <= latched_data(6 downto 0) & sin;
           timer_active <= '0';
         else
           timer <= timer + 1;

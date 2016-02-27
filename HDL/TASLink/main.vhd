@@ -23,6 +23,7 @@ architecture Behavioral of main is
            clock : in  STD_LOGIC;
            din : in  STD_LOGIC_VECTOR (7 downto 0);
            dout : out  STD_LOGIC;
+           sin : in STD_LOGIC;
            clk : in std_logic);
   end component;
   
@@ -143,12 +144,14 @@ begin
                                clock => p1_clock_f,
                                din => button_data,
                                dout => p1_d0,
+                               sin => '1',
                                clk => clk);
                                
   p2_sr: shift_register port map (latch => p1_latch_f,
                                   clock => p2_clock_f,
                                   din => p2_button_data,
                                   dout => p2_d0,
+                                  sin => '1',
                                   clk => clk);
                                   
   button_data <= button_queue(buffer_tail)(7 downto 0) when buffer_head /= buffer_tail else

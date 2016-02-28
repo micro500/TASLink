@@ -31,8 +31,8 @@ NET p2_d0          LOC="P47"  | IOSTANDARD=LVTTL;                               
 NET p2_latch       LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
 NET p2_clock       LOC="P62"  | IOSTANDARD=LVTTL;                                # B10
 
-#NET p2_do_oe       LOC="P48"  | IOSTANDARD=LVTTL;                                # A0
-#NET p1_do_oe       LOC="P56"  | IOSTANDARD=LVTTL;                                # A2
+NET p1_d0_oe       LOC="P56"  | IOSTANDARD=LVTTL;                                # A2
+NET p2_d0_oe       LOC="P48"  | IOSTANDARD=LVTTL;                                # A0
 
 
 NET l(3)           LOC="P114" | IOSTANDARD=LVTTL;                                # C0

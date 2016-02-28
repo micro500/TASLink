@@ -13,6 +13,8 @@ entity main is
            p2_latch : in std_logic;
            p2_clock : in std_logic;
            p2_d0 : out std_logic;
+           p1_d0_oe : out std_logic;
+           p2_d0_oe : out std_logic;
            debug : out STD_LOGIC_VECTOR (3 downto 0);
            l: out STD_LOGIC_VECTOR(3 downto 0));
 end main;
@@ -50,6 +52,21 @@ architecture Behavioral of main is
            tx_write : in STD_LOGIC;
            tx_out : out STD_LOGIC);
   end component;
+  
+  component controller is
+    Port ( console_clock : in  STD_LOGIC;
+           console_latch : in  STD_LOGIC;
+           console_io : in  STD_LOGIC;
+           console_d0 : out  STD_LOGIC;
+           console_d1 : out  STD_LOGIC;
+           console_d0_oe : out  STD_LOGIC;
+           console_d1_oe : out  STD_LOGIC;
+           data : in  STD_LOGIC_VECTOR (31 downto 0);
+           overread_value : in  STD_LOGIC;
+           size : in  STD_LOGIC_VECTOR (1 downto 0);
+           connected : in  STD_LOGIC;
+           clk : STD_LOGIC);
+  end component;
 
   -- Filtered signals coming from the console
   signal p1_clock_f : std_logic;
@@ -66,9 +83,6 @@ architecture Behavioral of main is
   signal p2_latch_toggle : std_logic;
   signal p2_clock_f_toggle : std_logic;
   signal p2_latch_f_toggle : std_logic;
-
-  signal button_data : std_logic_vector(7 downto 0) := "11111111";
-  signal p2_button_data : std_logic_vector(7 downto 0) := "11111111";
   
   signal data_from_uart : STD_LOGIC_VECTOR (7 downto 0);
   signal uart_data_recieved : STD_LOGIC := '0';
@@ -80,14 +94,19 @@ architecture Behavioral of main is
   
   signal uart_buffer_ptr : integer range 0 to 2 := 0;
   
-  type BUTTON_DATA_buffer is array(0 to 31) of std_logic_vector(15 downto 0);
+  type BUTTON_DATA_buffer is array(0 to 31) of std_logic_vector(31 downto 0);
   
-  signal button_queue : BUTTON_DATA_BUFFER;
-  
+  signal button_queue1 : BUTTON_DATA_BUFFER;
+  signal button_queue2 : BUTTON_DATA_BUFFER;
+  signal button_queue3 : BUTTON_DATA_BUFFER;
+  signal button_queue4 : BUTTON_DATA_BUFFER;
+  signal button_queue5 : BUTTON_DATA_BUFFER;
+  signal button_queue6 : BUTTON_DATA_BUFFER;
+  signal button_queue7 : BUTTON_DATA_BUFFER;
+  signal button_queue8 : BUTTON_DATA_BUFFER;
+    
   signal buffer_tail : integer range 0 to 31 := 0;
   signal buffer_head : integer range 0 to 31 := 0;
-  
-  signal test_toggle : std_logic := '0';
   
   signal prev_latch : std_logic := '0';
   
@@ -97,6 +116,14 @@ architecture Behavioral of main is
   signal windowed_mode : std_logic := '0';
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
+  
+  signal p1_d1 : std_logic;
+  signal p2_d1 : std_logic;
+  signal p1_d1_oe : std_logic;
+  signal p2_d1_oe : std_logic;
+  
+  signal controller1_data : std_logic_vector(31 downto 0) := (others => '1');
+  signal controller2_data : std_logic_vector(31 downto 0) := (others => '1');
 begin
 
   p1_latch_filter: filter port map (signal_in => p1_latch,
@@ -138,30 +165,7 @@ begin
   
   p2clock_f_toggle: toggle port map (signal_in => p2_clock_f,
                                      signal_out => p2_clock_f_toggle);
-
-
-  sr: shift_register port map (latch => p1_latch_f,
-                               clock => p1_clock_f,
-                               din => button_data,
-                               dout => p1_d0,
-                               sin => '1',
-                               clk => clk);
-                               
-  p2_sr: shift_register port map (latch => p1_latch_f,
-                                  clock => p2_clock_f,
-                                  din => p2_button_data,
-                                  dout => p2_d0,
-                                  sin => '1',
-                                  clk => clk);
-                                  
-  button_data <= button_queue(buffer_tail)(7 downto 0) when buffer_head /= buffer_tail else
-                 button_queue(31)(7 downto 0) when buffer_tail = 0 else
-                 button_queue(buffer_tail-1)(7 downto 0);
-
-  p2_button_data <= button_queue(buffer_tail)(15 downto 8) when buffer_head /= buffer_tail else
-                    button_queue(31)(15 downto 8) when buffer_tail = 0 else
-                    button_queue(buffer_tail-1)(15 downto 8);
-                                   
+                                     
   uart1: UART port map (rx_data_out => data_from_uart,
                         rx_data_was_recieved => uart_data_recieved,
                         rx_byte_waiting => uart_byte_waiting,
@@ -171,12 +175,37 @@ begin
                         tx_buffer_full => uart_buffer_full,
                         tx_write => uart_write,
                         tx_out => TX);
+                        
+  controller1: controller port map (console_clock => p1_clock_f,
+                                    console_latch => p1_latch_f,
+                                    console_io => '1',
+                                    console_d0 => p1_d0,
+                                    console_d1 => p1_d1,
+                                    console_d0_oe => p1_d0_oe,
+                                    console_d1_oe => p1_d1_oe,
+                                    data => controller1_data,
+                                    overread_value => '1',
+                                    size => "00",
+                                    connected => '1',
+                                    clk => clk);
+                                    
+  controller2: controller port map (console_clock => p2_clock_f,
+                                    console_latch => p2_latch_f,
+                                    console_io => '1',
+                                    console_d0 => p2_d0,
+                                    console_d1 => p2_d1,
+                                    console_d0_oe => p2_d0_oe,
+                                    console_d1_oe => p2_d1_oe,
+                                    data => controller2_data,
+                                    overread_value => '1',
+                                    size => "00",
+                                    connected => '1',
+                                    clk => clk);
   
 uart_recieve_btye: process(CLK)
 	begin
 		if (rising_edge(CLK)) then
 			if (uart_byte_waiting = '1' and uart_data_recieved = '0') then
-        test_toggle <= not(test_toggle);
         case uart_buffer_ptr is
           when 0 =>
             case data_from_uart is
@@ -202,7 +231,7 @@ uart_recieve_btye: process(CLK)
           when 1 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
               -- add it to the next spot
-              uart_data_temp <= data_from_uart;
+              button_queue1(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;
             
             uart_buffer_ptr <= 2;
@@ -210,7 +239,7 @@ uart_recieve_btye: process(CLK)
           when 2 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
               -- add it to the next spot
-              button_queue(buffer_head) <= data_from_uart & uart_data_temp;
+              button_queue2(buffer_head) <= "111111111111111111111111" & data_from_uart;
 
               -- move
               if (buffer_head = 31) then
@@ -288,6 +317,13 @@ uart_recieve_btye: process(CLK)
     end if;
   end process;
 
+  controller1_data <= button_queue1(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue1(31) when buffer_tail = 0 else
+                      button_queue1(buffer_tail-1);
+
+  controller2_data <= button_queue2(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue2(31) when buffer_tail = 0 else
+                      button_queue2(buffer_tail-1);
 
   l <= std_logic_vector(to_unsigned(buffer_tail, 4));
     

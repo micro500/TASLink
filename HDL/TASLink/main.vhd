@@ -100,15 +100,8 @@ architecture Behavioral of main is
   signal uart_buffer_ptr : integer range 0 to 16 := 0;
   
   type BUTTON_DATA_buffer is array(0 to 31) of std_logic_vector(31 downto 0);
-  
-  signal button_queue1 : BUTTON_DATA_BUFFER;
-  signal button_queue2 : BUTTON_DATA_BUFFER;
-  signal button_queue3 : BUTTON_DATA_BUFFER;
-  signal button_queue4 : BUTTON_DATA_BUFFER;
-  signal button_queue5 : BUTTON_DATA_BUFFER;
-  signal button_queue6 : BUTTON_DATA_BUFFER;
-  signal button_queue7 : BUTTON_DATA_BUFFER;
-  signal button_queue8 : BUTTON_DATA_BUFFER;
+  type BUTTON_DATA_buffer_array is array(1 to 8) of BUTTON_DATA_buffer;
+  signal button_queue : BUTTON_DATA_buffer_array;
     
   signal buffer_tail : integer range 0 to 31 := 0;
   signal buffer_head : integer range 0 to 31 := 0;
@@ -121,60 +114,24 @@ architecture Behavioral of main is
   signal windowed_mode : std_logic := '0';
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
-    
-  signal controller1_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller2_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller3_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller4_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller5_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller6_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller7_data : std_logic_vector(31 downto 0) := (others => '1');
-  signal controller8_data : std_logic_vector(31 downto 0) := (others => '1');
   
   signal controller_size : std_logic_vector(1 downto 0) := "00";
   
-  signal controller1_connected : std_logic := '0';
-  signal controller2_connected : std_logic := '0';
-  signal controller3_connected : std_logic := '0';
-  signal controller4_connected : std_logic := '0';
-  signal controller5_connected : std_logic := '0';
-  signal controller6_connected : std_logic := '0';
-  signal controller7_connected : std_logic := '0';
-  signal controller8_connected : std_logic := '0';
+  type logic_array is array (natural range <>) of std_logic;
+  signal controller_clock : logic_array(8 downto 1);
+  signal controller_latch : logic_array(8 downto 1);
+  signal controller_io : logic_array(8 downto 1);
+  signal controller_d0 : logic_array(8 downto 1);
+  signal controller_d1 : logic_array(8 downto 1);
+  signal controller_d0_oe : logic_array(8 downto 1);
+  signal controller_d1_oe : logic_array(8 downto 1);
+  signal controller_overread_value : logic_array(8 downto 1);
+  signal controller_connected : logic_array(8 downto 1);
   
-  signal controller1_d0 : std_logic;
-  signal controller1_d1 : std_logic;
-  signal controller2_d0 : std_logic;
-  signal controller2_d1 : std_logic;
-  signal controller3_d0 : std_logic;
-  signal controller3_d1 : std_logic;
-  signal controller4_d0 : std_logic;
-  signal controller4_d1 : std_logic;
-  signal controller5_d0 : std_logic;
-  signal controller5_d1 : std_logic;
-  signal controller6_d0 : std_logic;
-  signal controller6_d1 : std_logic;
-  signal controller7_d0 : std_logic;
-  signal controller7_d1 : std_logic;
-  signal controller8_d0 : std_logic;
-  signal controller8_d1 : std_logic;
-  
-  signal controller1_d0_oe : std_logic;
-  signal controller1_d1_oe : std_logic;
-  signal controller2_d0_oe : std_logic;
-  signal controller2_d1_oe : std_logic;
-  signal controller3_d0_oe : std_logic;
-  signal controller3_d1_oe : std_logic;
-  signal controller4_d0_oe : std_logic;
-  signal controller4_d1_oe : std_logic;
-  signal controller5_d0_oe : std_logic;
-  signal controller5_d1_oe : std_logic;
-  signal controller6_d0_oe : std_logic;
-  signal controller6_d1_oe : std_logic;
-  signal controller7_d0_oe : std_logic;
-  signal controller7_d1_oe : std_logic;
-  signal controller8_d0_oe : std_logic;
-  signal controller8_d1_oe : std_logic;
+  type vector32 is array (natural range <>) of std_logic_vector(31 downto 0);
+  signal controller_data : vector32(8 downto 1);
+
+
 begin
 
   p1_latch_filter: filter port map (signal_in => p1_latch,
@@ -226,110 +183,23 @@ begin
                         tx_buffer_full => uart_buffer_full,
                         tx_write => uart_write,
                         tx_out => TX);
-                        
-  controller1: controller port map (console_clock => p1_clock_f,
-                                    console_latch => p1_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller1_d0,
-                                    console_d1 => controller1_d1,
-                                    console_d0_oe => controller1_d0_oe,
-                                    console_d1_oe => controller1_d1_oe,
-                                    data => controller1_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller1_connected,
-                                    clk => clk);
-                                    
-  controller2: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller2_d0,
-                                    console_d1 => controller2_d1,
-                                    console_d0_oe => controller2_d0_oe,
-                                    console_d1_oe => controller2_d1_oe,
-                                    data => controller2_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller2_connected,
-                                    clk => clk);
-  
-  controller3: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller3_d0,
-                                    console_d1 => controller3_d1,
-                                    console_d0_oe => controller3_d0_oe,
-                                    console_d1_oe => controller3_d1_oe,
-                                    data => controller3_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller3_connected,
-                                    clk => clk);
-  
-  controller4: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller4_d0,
-                                    console_d1 => controller4_d1,
-                                    console_d0_oe => controller4_d0_oe,
-                                    console_d1_oe => controller4_d1_oe,
-                                    data => controller4_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller4_connected,
-                                    clk => clk);
-  
-  controller5: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller5_d0,
-                                    console_d1 => controller5_d1,
-                                    console_d0_oe => controller5_d0_oe,
-                                    console_d1_oe => controller5_d1_oe,
-                                    data => controller5_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller5_connected,
-                                    clk => clk);  
-
-  controller6: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller6_d0,
-                                    console_d1 => controller6_d1,
-                                    console_d0_oe => controller6_d0_oe,
-                                    console_d1_oe => controller6_d1_oe,
-                                    data => controller6_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller6_connected,
-                                    clk => clk); 
-
-  controller7: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller7_d0,
-                                    console_d1 => controller7_d1,
-                                    console_d0_oe => controller7_d0_oe,
-                                    console_d1_oe => controller7_d1_oe,
-                                    data => controller7_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller7_connected,
-                                    clk => clk);
-
-  controller8: controller port map (console_clock => p2_clock_f,
-                                    console_latch => p2_latch_f,
-                                    console_io => '1',
-                                    console_d0 => controller8_d0,
-                                    console_d1 => controller8_d1,
-                                    console_d0_oe => controller8_d0_oe,
-                                    console_d1_oe => controller8_d1_oe,
-                                    data => controller8_data,
-                                    overread_value => '1',
-                                    size => controller_size,
-                                    connected => controller8_connected,
-                                    clk => clk);
+ 
+  GENERATE_CONTROLLERS:
+  for I in 1 to 8 generate
+    controllers: controller port map (console_clock => controller_clock(I),
+                                     console_latch => controller_latch(I),
+                                     console_io => controller_io(I),
+                                     console_d0 => controller_d0(I),
+                                     console_d1 => controller_d1(I),
+                                     console_d0_oe => controller_d0_oe(I),
+                                     console_d1_oe => controller_d1_oe(I),
+                                     data => controller_data(I),
+                                     overread_value => controller_overread_value(I),
+                                     size => controller_size,
+                                     connected => controller_connected(I),
+                                     clk => clk);
+  end generate GENERATE_CONTROLLERS;
+ 
                                     
 uart_recieve_btye: process(CLK)
 	begin
@@ -372,7 +242,7 @@ uart_recieve_btye: process(CLK)
             case serial_receive_mode is
               when "000" =>
                 if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-                  button_queue1(buffer_head) <= "111111111111111111111111" & data_from_uart;
+                  button_queue(1)(buffer_head) <= "111111111111111111111111" & data_from_uart;
                 end if;
                 
                 uart_buffer_ptr <= 2;
@@ -380,34 +250,34 @@ uart_recieve_btye: process(CLK)
               when "001" =>
                 case data_from_uart is
                   when x"30" => -- '0'
-                    controller1_connected <= '0';
-                    controller2_connected <= '0';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '0';
+                    controller_connected(2) <= '0';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
                   
                   when x"31" => -- '1'
-                    controller1_connected <= '1';
-                    controller2_connected <= '0';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '1';
+                    controller_connected(2) <= '0';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
 
                   when x"32" => -- '2'
-                    controller1_connected <= '1';
-                    controller2_connected <= '1';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '1';
+                    controller_connected(2) <= '1';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
                   
                   when others =>
                   
@@ -418,44 +288,44 @@ uart_recieve_btye: process(CLK)
               when "010" =>
                 case data_from_uart is
                   when x"30" => -- '0'
-                    controller1_connected <= '0';
-                    controller2_connected <= '0';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '0';
+                    controller_connected(2) <= '0';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
                   
                   when x"31" => -- '1'
-                    controller1_connected <= '1';
-                    controller2_connected <= '0';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '1';
+                    controller_connected(2) <= '0';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
 
                   when x"32" => -- '2'
-                    controller1_connected <= '1';
-                    controller2_connected <= '1';
-                    controller3_connected <= '0';
-                    controller4_connected <= '0';
-                    controller5_connected <= '0';
-                    controller6_connected <= '0';
-                    controller7_connected <= '0';
-                    controller8_connected <= '0';
+                    controller_connected(1) <= '1';
+                    controller_connected(2) <= '1';
+                    controller_connected(3) <= '0';
+                    controller_connected(4) <= '0';
+                    controller_connected(5) <= '0';
+                    controller_connected(6) <= '0';
+                    controller_connected(7) <= '0';
+                    controller_connected(8) <= '0';
                     
                   when x"38" => -- '8'
-                    controller1_connected <= '1';
-                    controller2_connected <= '1';
-                    controller3_connected <= '1';
-                    controller4_connected <= '1';
-                    controller5_connected <= '1';
-                    controller6_connected <= '1';
-                    controller7_connected <= '1';
-                    controller8_connected <= '1';
+                    controller_connected(1) <= '1';
+                    controller_connected(2) <= '1';
+                    controller_connected(3) <= '1';
+                    controller_connected(4) <= '1';
+                    controller_connected(5) <= '1';
+                    controller_connected(6) <= '1';
+                    controller_connected(7) <= '1';
+                    controller_connected(8) <= '1';
                   
                   when others =>
                   
@@ -472,7 +342,7 @@ uart_recieve_btye: process(CLK)
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
               if (controller_size = "00") then
                 -- add it to the next spot
-                button_queue2(buffer_head) <= "111111111111111111111111" & data_from_uart;
+                button_queue(2)(buffer_head) <= "111111111111111111111111" & data_from_uart;
                 -- move
                 if (buffer_head = 31) then
                   buffer_head <= 0;
@@ -482,7 +352,7 @@ uart_recieve_btye: process(CLK)
                 uart_buffer_ptr <= 0;
                 
               elsif (controller_size = "01") then
-                button_queue1(buffer_head) <= "1111111111111111" & data_from_uart & button_queue1(buffer_head)(7 downto 0);
+                button_queue(1)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(1)(buffer_head)(7 downto 0);
                 uart_buffer_ptr <= 3;
               else
                 uart_buffer_ptr <= 0;
@@ -491,85 +361,85 @@ uart_recieve_btye: process(CLK)
             
           when 3 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue2(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(2)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 4;
           
           when 4 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue2(buffer_head) <= "1111111111111111" & data_from_uart & button_queue2(buffer_head)(7 downto 0);
+              button_queue(2)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(2)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 5;
 
           when 5 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue3(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(3)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 6;
           
           when 6 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue3(buffer_head) <= "1111111111111111" & data_from_uart & button_queue3(buffer_head)(7 downto 0);
+              button_queue(3)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(3)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 7;
           
           when 7 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue4(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(4)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 8;
           
           when 8 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue4(buffer_head) <= "1111111111111111" & data_from_uart & button_queue4(buffer_head)(7 downto 0);
+              button_queue(4)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(4)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 9;
 
           when 9 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue5(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(5)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 10;
           
           when 10 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue5(buffer_head) <= "1111111111111111" & data_from_uart & button_queue5(buffer_head)(7 downto 0);
+              button_queue(5)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(5)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 11;
           
           when 11 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue6(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(6)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 12;
           
           when 12 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue6(buffer_head) <= "1111111111111111" & data_from_uart & button_queue6(buffer_head)(7 downto 0);
+              button_queue(6)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(6)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 13;
 
           when 13 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue7(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(7)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 14;
           
           when 14 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue7(buffer_head) <= "1111111111111111" & data_from_uart & button_queue7(buffer_head)(7 downto 0);
+              button_queue(7)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(7)(buffer_head)(7 downto 0);
             end if;  
             uart_buffer_ptr <= 15;
           
           when 15 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue8(buffer_head) <= "111111111111111111111111" & data_from_uart;
+              button_queue(8)(buffer_head) <= "111111111111111111111111" & data_from_uart;
             end if;  
             uart_buffer_ptr <= 16;
           
           when 16 =>
             if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue8(buffer_head) <= "1111111111111111" & data_from_uart & button_queue8(buffer_head)(7 downto 0);
+              button_queue(8)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(8)(buffer_head)(7 downto 0);
               
               -- move
               if (buffer_head = 31) then
@@ -647,48 +517,83 @@ uart_recieve_btye: process(CLK)
     end if;
   end process;
 
-  controller1_data <= button_queue1(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue1(31) when buffer_tail = 0 else
-                      button_queue1(buffer_tail-1);
+  controller_data(1) <= button_queue(1)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(1)(31) when buffer_tail = 0 else
+                      button_queue(1)(buffer_tail-1);
 
-  controller2_data <= button_queue2(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue2(31) when buffer_tail = 0 else
-                      button_queue2(buffer_tail-1);
+  controller_data(2) <= button_queue(2)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(2)(31) when buffer_tail = 0 else
+                      button_queue(2)(buffer_tail-1);
   
-  controller3_data <= button_queue3(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue3(31) when buffer_tail = 0 else
-                      button_queue3(buffer_tail-1);
+  controller_data(3) <= button_queue(3)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(3)(31) when buffer_tail = 0 else
+                      button_queue(3)(buffer_tail-1);
 
-  controller4_data <= button_queue4(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue4(31) when buffer_tail = 0 else
-                      button_queue4(buffer_tail-1);
+  controller_data(4) <= button_queue(4)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(4)(31) when buffer_tail = 0 else
+                      button_queue(4)(buffer_tail-1);
                       
-  controller5_data <= button_queue5(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue5(31) when buffer_tail = 0 else
-                      button_queue5(buffer_tail-1);
+  controller_data(5) <= button_queue(5)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(5)(31) when buffer_tail = 0 else
+                      button_queue(5)(buffer_tail-1);
 
-  controller6_data <= button_queue6(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue6(31) when buffer_tail = 0 else
-                      button_queue6(buffer_tail-1);
+  controller_data(6) <= button_queue(6)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(6)(31) when buffer_tail = 0 else
+                      button_queue(6)(buffer_tail-1);
                       
-  controller7_data <= button_queue7(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue7(31) when buffer_tail = 0 else
-                      button_queue7(buffer_tail-1);
+  controller_data(7) <= button_queue(7)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(7)(31) when buffer_tail = 0 else
+                      button_queue(7)(buffer_tail-1);
 
-  controller8_data <= button_queue8(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue8(31) when buffer_tail = 0 else
-                      button_queue8(buffer_tail-1);
+  controller_data(8) <= button_queue(8)(buffer_tail) when buffer_head /= buffer_tail else
+                      button_queue(8)(31) when buffer_tail = 0 else
+                      button_queue(8)(buffer_tail-1);
 
-  p1_d0 <= controller1_d0;
-  p1_d1 <= controller1_d1;
-  p2_d0 <= controller2_d0;
-  p2_d1 <= controller2_d1;
+  p1_d0 <= controller_d0(1);
+  p1_d1 <= controller_d1(1);
+  p2_d0 <= controller_d0(2);
+  p2_d1 <= controller_d1(2);
   
-  p1_d0_oe <= controller1_d0_oe;
-  p1_d1_oe <= controller1_d1_oe;
-  p2_d0_oe <= controller2_d0_oe;
-  p2_d1_oe <= controller2_d1_oe;
+  p1_d0_oe <= controller_d0_oe(1);
+  p1_d1_oe <= controller_d1_oe(1);
+  p2_d0_oe <= controller_d0_oe(2);
+  p2_d1_oe <= controller_d1_oe(2);
   
+  controller_clock(1) <= p1_clock_f;
+  controller_clock(2) <= p2_clock_f;
+  controller_clock(3) <= p2_clock_f;
+  controller_clock(4) <= p2_clock_f;
+  controller_clock(5) <= p2_clock_f;
+  controller_clock(6) <= p2_clock_f;
+  controller_clock(7) <= p2_clock_f;
+  controller_clock(8) <= p2_clock_f;
+  
+  controller_latch(1) <= p1_latch_f;
+  controller_latch(2) <= p2_latch_f;
+  controller_latch(3) <= p2_latch_f;
+  controller_latch(4) <= p2_latch_f;
+  controller_latch(5) <= p2_latch_f;
+  controller_latch(6) <= p2_latch_f;
+  controller_latch(7) <= p2_latch_f;
+  controller_latch(8) <= p2_latch_f;
+  
+  controller_io(1) <= '1';
+  controller_io(2) <= '1';
+  controller_io(3) <= '1';
+  controller_io(4) <= '1';
+  controller_io(5) <= '1';
+  controller_io(6) <= '1';
+  controller_io(7) <= '1';
+  controller_io(8) <= '1';
+  
+  controller_overread_value(1) <= '1';
+  controller_overread_value(2) <= '1';
+  controller_overread_value(3) <= '1';
+  controller_overread_value(4) <= '1';
+  controller_overread_value(5) <= '1';
+  controller_overread_value(6) <= '1';
+  controller_overread_value(7) <= '1';
+  controller_overread_value(8) <= '1';
 
   l <= std_logic_vector(to_unsigned(buffer_tail, 4));
     

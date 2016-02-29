@@ -23,16 +23,20 @@ NET TX             LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;
 NET p1_latch       LOC="P95"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;        # B9
 NET p1_clock       LOC="P67"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;                                # A6
 NET p1_d0          LOC="P55"  | IOSTANDARD=LVTTL;                                # B13
+NET p1_d1          LOC="P57"  | IOSTANDARD=LVTTL;                                # B12
 NET debug(0)       LOC="P134"  | IOSTANDARD=LVTTL;                                # C15
 NET debug(1)       LOC="P133"  | IOSTANDARD=LVTTL;                                # C14
 NET debug(2)       LOC="P132"  | IOSTANDARD=LVTTL;                                # C13
 NET debug(3)       LOC="P131"  | IOSTANDARD=LVTTL;                                # C12
 NET p2_d0          LOC="P47"  | IOSTANDARD=LVTTL;                                # B15
+NET p2_d1          LOC="P50"  | IOSTANDARD=LVTTL;                                # B14
 NET p2_latch       LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
 NET p2_clock       LOC="P62"  | IOSTANDARD=LVTTL;                                # B10
 
 NET p1_d0_oe       LOC="P56"  | IOSTANDARD=LVTTL;                                # A2
 NET p2_d0_oe       LOC="P48"  | IOSTANDARD=LVTTL;                                # A0
+NET p1_d1_oe       LOC="P58"  | IOSTANDARD=LVTTL;                                # A3
+NET p2_d1_oe       LOC="P51"  | IOSTANDARD=LVTTL;                                # A1
 
 
 NET l(3)           LOC="P114" | IOSTANDARD=LVTTL;                                # C0

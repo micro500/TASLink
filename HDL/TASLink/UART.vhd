@@ -17,7 +17,7 @@ end UART;
 architecture Behavioral of UART is
 	signal rx_bit_buffer : std_logic_vector (39 downto 0) := (others => '1');
 	signal rx_baud : std_logic := '0';
-	signal rx_baud_counter : integer range 0 to 813;
+	signal rx_baud_counter : integer range 0 to 68;
 	
 	signal rx_data : STD_LOGIC_VECTOR (7 downto 0) := (others => '1');
 	
@@ -30,7 +30,7 @@ architecture Behavioral of UART is
 	signal tx_buffer : std_logic_vector (10 downto 0) := (others => '1');
 	signal writing : std_logic := '0';
 	
-	signal tx_baud_counter : integer range 0 to 3254;
+	signal tx_baud_counter : integer range 0 to 276;
 	signal tx_bit_counter : integer range 0 to 13;
 	signal new_byte_to_send : std_logic := '0';
 begin
@@ -59,7 +59,7 @@ tx: process (clk)
 				tx_bit_counter <= 0;
 				tx_baud_counter <= 0;
 			elsif (writing = '1') then
-				if (tx_baud_counter = 3254) then
+				if (tx_baud_counter = 276) then
 					tx_buffer <= '1' & tx_buffer(10 downto 1);
 					
 					if (tx_bit_counter = 13) then
@@ -94,7 +94,7 @@ rx_ack: process (clk)
 rx: process (clk)
 	begin
 		if (rising_edge(clk)) then
-			if (rx_baud_counter = 813) then
+			if (rx_baud_counter = 68) then
 				if (rx_bit_buffer(38 downto 37) = "11" and
 					 rx_bit_buffer(34) = rx_bit_buffer(33) and
 					 rx_bit_buffer(30) = rx_bit_buffer(29) and

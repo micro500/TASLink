@@ -11,10 +11,12 @@ entity main is
            p1_clock : in  STD_LOGIC;
            p1_d0 : out STD_LOGIC;
            p1_d1 : out STD_LOGIC;
+           p1_io : in STD_LOGIC;
            p2_latch : in std_logic;
            p2_clock : in std_logic;
            p2_d0 : out std_logic;
            p2_d1 : out std_logic;
+           p2_io : in std_logic;
            p1_d0_oe : out std_logic;
            p2_d0_oe : out std_logic;
            p1_d1_oe : out std_logic;
@@ -71,12 +73,59 @@ architecture Behavioral of main is
            connected : in  STD_LOGIC;
            clk : STD_LOGIC);
   end component;
+  
+  component snes_multitap is
+    Port ( console_clock : in  STD_LOGIC;
+           console_latch : in  STD_LOGIC;
+           console_io : in  STD_LOGIC;
+           console_d0 : out  STD_LOGIC;
+           console_d1 : out  STD_LOGIC;
+           console_d0_oe : out  STD_LOGIC;
+           console_d1_oe : out  STD_LOGIC;
+           
+           clk : in  STD_LOGIC;
+           sw : in  STD_LOGIC;
+           
+           port1_latch : out  STD_LOGIC;
+           port1_clock : out  STD_LOGIC;
+           port1_io : out  STD_LOGIC;
+           port1_d0 : in  STD_LOGIC;
+           port1_d1 : in  STD_LOGIC;
+           port1_d0_oe : in  STD_LOGIC;
+           port1_d1_oe : in  STD_LOGIC;
+           
+           port2_latch : out  STD_LOGIC;
+           port2_clock : out  STD_LOGIC;
+           port2_io : out  STD_LOGIC;
+           port2_d0 : in  STD_LOGIC;
+           port2_d1 : in  STD_LOGIC;
+           port2_d0_oe : in  STD_LOGIC;
+           port2_d1_oe : in  STD_LOGIC;
+           
+           port3_latch : out  STD_LOGIC;
+           port3_clock : out  STD_LOGIC;
+           port3_io : out  STD_LOGIC;
+           port3_d0 : in  STD_LOGIC;
+           port3_d1 : in  STD_LOGIC;
+           port3_d0_oe : in  STD_LOGIC;
+           port3_d1_oe : in  STD_LOGIC;
+           
+           port4_latch : out  STD_LOGIC;
+           port4_clock : out  STD_LOGIC;
+           port4_io : out  STD_LOGIC;
+           port4_d0 : in  STD_LOGIC;
+           port4_d1 : in  STD_LOGIC;
+           port4_d0_oe : in  STD_LOGIC;
+           port4_d1_oe : in  STD_LOGIC);
+  end component;
 
   -- Filtered signals coming from the console
   signal p1_clock_f : std_logic;
   signal p1_latch_f : std_logic;
+  signal p1_io_f : std_logic;
   signal p2_clock_f : std_logic;
   signal p2_latch_f : std_logic;
+  signal p2_io_f : std_logic;
   
   -- Toggle signals, useful for monitoring when the FPGA detects a rising edge
   signal p1_clock_toggle : std_logic;
@@ -132,6 +181,44 @@ architecture Behavioral of main is
   signal controller_data : vector32(8 downto 1);
 
 
+  signal multitap1_d0 : std_logic;
+  signal multitap1_d1 : std_logic;
+  signal multitap1_d0_oe : std_logic;
+  signal multitap1_d1_oe : std_logic;
+                                                                                  
+  signal multitap1_port1_latch : std_logic;
+  signal multitap1_port1_clock : std_logic;
+  signal multitap1_port1_io : std_logic;
+  signal multitap1_port1_d0 : std_logic;
+  signal multitap1_port1_d1 : std_logic;
+  signal multitap1_port1_d0_oe : std_logic;
+  signal multitap1_port1_d1_oe : std_logic;
+                                        
+  signal multitap1_port2_latch : std_logic;
+  signal multitap1_port2_clock : std_logic;
+  signal multitap1_port2_io : std_logic;
+  signal multitap1_port2_d0 : std_logic;
+  signal multitap1_port2_d1 : std_logic;
+  signal multitap1_port2_d0_oe : std_logic;
+  signal multitap1_port2_d1_oe : std_logic;
+                                        
+  signal multitap1_port3_latch : std_logic;
+  signal multitap1_port3_clock : std_logic;
+  signal multitap1_port3_io : std_logic;
+  signal multitap1_port3_d0 : std_logic;
+  signal multitap1_port3_d1 : std_logic;
+  signal multitap1_port3_d0_oe : std_logic;
+  signal multitap1_port3_d1_oe : std_logic;
+                                         
+  signal multitap1_port4_latch : std_logic;
+  signal multitap1_port4_clock : std_logic;
+  signal multitap1_port4_io : std_logic;
+  signal multitap1_port4_d0 : std_logic;
+  signal multitap1_port4_d1 : std_logic;
+  signal multitap1_port4_d0_oe : std_logic;
+  signal multitap1_port4_d1_oe : std_logic;
+  
+  signal use_multitap1 : std_logic := '0';
 begin
 
   p1_latch_filter: filter port map (signal_in => p1_latch,
@@ -141,6 +228,10 @@ begin
   p1_clock_filter: filter port map (signal_in => p1_clock,
                                     clk => CLK,
                                     signal_out => p1_clock_f);
+  
+  p1_io_filter: filter port map (signal_in => p1_io,
+                                 clk => CLK,
+                                 signal_out => p1_io_f);
                                  
   p2_latch_filter: filter port map (signal_in => p2_latch,
                                     clk => CLK,
@@ -149,6 +240,11 @@ begin
   p2_clock_filter: filter port map (signal_in => p2_clock,
                                     clk => CLK,
                                     signal_out => p2_clock_f);
+
+  p2_io_filter: filter port map (signal_in => p2_io,
+                                 clk => CLK,
+                                 signal_out => p2_io_f);
+
                                     
   p1latch_toggle: toggle port map (signal_in => p1_latch,
                                    signal_out => p1_latch_toggle);
@@ -199,7 +295,49 @@ begin
                                      connected => controller_connected(I),
                                      clk => clk);
   end generate GENERATE_CONTROLLERS;
- 
+  
+  multitap1: snes_multitap port map ( console_clock => p1_clock_f,
+                                      console_latch => p1_latch_f,
+                                      console_io => p1_io_f,
+                                      console_d0 => multitap1_d0,
+                                      console_d1 => multitap1_d1,
+                                      console_d0_oe => multitap1_d0_oe,
+                                      console_d1_oe => multitap1_d1_oe,
+                                       
+                                      clk => clk,
+                                      sw => '1',
+                                       
+                                      port1_latch => multitap1_port1_latch,
+                                      port1_clock => multitap1_port1_clock,
+                                      port1_io => multitap1_port1_io,
+                                      port1_d0 => multitap1_port1_d0,
+                                      port1_d1 => multitap1_port1_d1,
+                                      port1_d0_oe => multitap1_port1_d0_oe,
+                                      port1_d1_oe => multitap1_port1_d1_oe,
+                                      
+                                      port2_latch => multitap1_port2_latch,
+                                      port2_clock => multitap1_port2_clock,
+                                      port2_io => multitap1_port2_io,
+                                      port2_d0 => multitap1_port2_d0,
+                                      port2_d1 => multitap1_port2_d1,
+                                      port2_d0_oe => multitap1_port2_d0_oe,
+                                      port2_d1_oe => multitap1_port2_d1_oe,
+                                      
+                                      port3_latch => multitap1_port3_latch,
+                                      port3_clock => multitap1_port3_clock,
+                                      port3_io => multitap1_port3_io,
+                                      port3_d0 => multitap1_port3_d0,
+                                      port3_d1 => multitap1_port3_d1,
+                                      port3_d0_oe => multitap1_port3_d0_oe,
+                                      port3_d1_oe => multitap1_port3_d1_oe,
+                                       
+                                      port4_latch => multitap1_port4_latch,
+                                      port4_clock => multitap1_port4_clock,
+                                      port4_io => multitap1_port4_io,
+                                      port4_d0 => multitap1_port4_d0,
+                                      port4_d1 => multitap1_port4_d1,
+                                      port4_d0_oe => multitap1_port4_d0_oe,
+                                      port4_d1_oe => multitap1_port4_d1_oe); 
                                     
 uart_recieve_btye: process(CLK)
 	begin
@@ -258,6 +396,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '0';
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
+                    
+                    use_multitap1 <= '0';
                   
                   when x"31" => -- '1'
                     controller_connected(1) <= '1';
@@ -268,6 +408,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '0';
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
+                    
+                    use_multitap1 <= '0';
 
                   when x"32" => -- '2'
                     controller_connected(1) <= '1';
@@ -278,6 +420,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '0';
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
+                    
+                    use_multitap1 <= '0';
                   
                   when others =>
                   
@@ -296,6 +440,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '0';
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
+                    
+                    use_multitap1 <= '0';
                   
                   when x"31" => -- '1'
                     controller_connected(1) <= '1';
@@ -306,6 +452,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '0';
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
+                    
+                    use_multitap1 <= '0';
 
                   when x"32" => -- '2'
                     controller_connected(1) <= '1';
@@ -317,6 +465,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(7) <= '0';
                     controller_connected(8) <= '0';
                     
+                    use_multitap1 <= '0';
+                    
                   when x"38" => -- '8'
                     controller_connected(1) <= '1';
                     controller_connected(2) <= '1';
@@ -326,6 +476,8 @@ uart_recieve_btye: process(CLK)
                     controller_connected(6) <= '1';
                     controller_connected(7) <= '1';
                     controller_connected(8) <= '1';
+                    
+                    use_multitap1 <= '1';
                   
                   when others =>
                   
@@ -549,29 +701,41 @@ uart_recieve_btye: process(CLK)
                       button_queue(8)(31) when buffer_tail = 0 else
                       button_queue(8)(buffer_tail-1);
 
-  p1_d0 <= controller_d0(1);
-  p1_d1 <= controller_d1(1);
+  p1_d0 <= multitap1_d0 when use_multitap1 = '1' else
+           controller_d0(1);
+  p1_d1 <= multitap1_d1 when use_multitap1 = '1' else
+           controller_d1(1);
   p2_d0 <= controller_d0(2);
   p2_d1 <= controller_d1(2);
   
-  p1_d0_oe <= controller_d0_oe(1);
-  p1_d1_oe <= controller_d1_oe(1);
+  p1_d0_oe <= multitap1_d0_oe when use_multitap1 = '1' else
+              controller_d0_oe(1);
+  p1_d1_oe <= multitap1_d1_oe when use_multitap1 = '1' else
+              controller_d1_oe(1);
   p2_d0_oe <= controller_d0_oe(2);
   p2_d1_oe <= controller_d1_oe(2);
   
-  controller_clock(1) <= p1_clock_f;
-  controller_clock(2) <= p2_clock_f;
-  controller_clock(3) <= p2_clock_f;
-  controller_clock(4) <= p2_clock_f;
+  controller_clock(1) <= multitap1_port1_clock when use_multitap1 = '1' else
+                         p1_clock_f;
+  controller_clock(2) <= multitap1_port2_clock when use_multitap1 = '1' else
+                         p2_clock_f;
+  controller_clock(3) <= multitap1_port3_clock when use_multitap1 = '1' else
+                         p2_clock_f;
+  controller_clock(4) <= multitap1_port4_clock when use_multitap1 = '1' else
+                         p2_clock_f;
   controller_clock(5) <= p2_clock_f;
   controller_clock(6) <= p2_clock_f;
   controller_clock(7) <= p2_clock_f;
   controller_clock(8) <= p2_clock_f;
   
-  controller_latch(1) <= p1_latch_f;
-  controller_latch(2) <= p2_latch_f;
-  controller_latch(3) <= p2_latch_f;
-  controller_latch(4) <= p2_latch_f;
+  controller_latch(1) <= multitap1_port1_latch when use_multitap1 = '1' else
+                         p1_latch_f;
+  controller_latch(2) <= multitap1_port2_latch when use_multitap1 = '1' else
+                         p2_latch_f;
+  controller_latch(3) <= multitap1_port3_latch when use_multitap1 = '1' else
+                         p2_latch_f;
+  controller_latch(4) <= multitap1_port4_latch when use_multitap1 = '1' else
+                         p2_latch_f;
   controller_latch(5) <= p2_latch_f;
   controller_latch(6) <= p2_latch_f;
   controller_latch(7) <= p2_latch_f;
@@ -594,6 +758,26 @@ uart_recieve_btye: process(CLK)
   controller_overread_value(6) <= '1';
   controller_overread_value(7) <= '1';
   controller_overread_value(8) <= '1';
+  
+  multitap1_port1_d0 <= controller_d0(1);
+  multitap1_port2_d0 <= controller_d0(2);
+  multitap1_port3_d0 <= controller_d0(3);
+  multitap1_port4_d0 <= controller_d0(4);
+  
+  multitap1_port1_d1 <= controller_d1(1);
+  multitap1_port2_d1 <= controller_d1(2);
+  multitap1_port3_d1 <= controller_d1(3);
+  multitap1_port4_d1 <= controller_d1(4);
+  
+  multitap1_port1_d0_oe <= controller_d0_oe(1);
+  multitap1_port2_d0_oe <= controller_d0_oe(2);
+  multitap1_port3_d0_oe <= controller_d0_oe(3);
+  multitap1_port4_d0_oe <= controller_d0_oe(4);
+
+  multitap1_port1_d1_oe <= controller_d1_oe(1);
+  multitap1_port2_d1_oe <= controller_d1_oe(2);
+  multitap1_port3_d1_oe <= controller_d1_oe(3);
+  multitap1_port4_d1_oe <= controller_d1_oe(4);
 
   l <= std_logic_vector(to_unsigned(buffer_tail, 4));
     

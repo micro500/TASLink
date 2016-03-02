@@ -24,6 +24,7 @@ NET p1_latch       LOC="P95"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;       
 NET p1_clock       LOC="P67"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;                                # A6
 NET p1_d0          LOC="P55"  | IOSTANDARD=LVTTL;                                # B13
 NET p1_d1          LOC="P57"  | IOSTANDARD=LVTTL;                                # B12
+NET p1_io          LOC="P66"  | IOSTANDARD=LVTTL;                                # A5
 NET debug(0)       LOC="P134"  | IOSTANDARD=LVTTL;                                # C15
 NET debug(1)       LOC="P133"  | IOSTANDARD=LVTTL;                                # C14
 NET debug(2)       LOC="P132"  | IOSTANDARD=LVTTL;                                # C13
@@ -32,6 +33,7 @@ NET p2_d0          LOC="P47"  | IOSTANDARD=LVTTL;                               
 NET p2_d1          LOC="P50"  | IOSTANDARD=LVTTL;                                # B14
 NET p2_latch       LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
 NET p2_clock       LOC="P62"  | IOSTANDARD=LVTTL;                                # B10
+NET p2_io          LOC="P59"  | IOSTANDARD=LVTTL;                                # B11
 
 NET p1_d0_oe       LOC="P56"  | IOSTANDARD=LVTTL;                                # A2
 NET p2_d0_oe       LOC="P48"  | IOSTANDARD=LVTTL;                                # A0

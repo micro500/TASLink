@@ -219,6 +219,8 @@ architecture Behavioral of main is
   signal multitap1_port4_d1_oe : std_logic;
   
   signal use_multitap1 : std_logic := '0';
+  
+  signal address_to_use : integer range 0 to 31;
 begin
 
   p1_latch_filter: filter port map (signal_in => p1_latch,
@@ -668,38 +670,26 @@ uart_recieve_btye: process(CLK)
       end if;
     end if;
   end process;
-
-  controller_data(1) <= button_queue(1)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(1)(31) when buffer_tail = 0 else
-                      button_queue(1)(buffer_tail-1);
-
-  controller_data(2) <= button_queue(2)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(2)(31) when buffer_tail = 0 else
-                      button_queue(2)(buffer_tail-1);
   
-  controller_data(3) <= button_queue(3)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(3)(31) when buffer_tail = 0 else
-                      button_queue(3)(buffer_tail-1);
+  address_to_use <= buffer_tail when buffer_head /= buffer_tail else
+                    31 when buffer_tail = 0 else
+                    buffer_tail - 1;
 
-  controller_data(4) <= button_queue(4)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(4)(31) when buffer_tail = 0 else
-                      button_queue(4)(buffer_tail-1);
+  controller_data(1) <= button_queue(1)(address_to_use);
+
+  controller_data(2) <= button_queue(2)(address_to_use);
+  
+  controller_data(3) <= button_queue(3)(address_to_use);
+
+  controller_data(4) <= button_queue(4)(address_to_use);
                       
-  controller_data(5) <= button_queue(5)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(5)(31) when buffer_tail = 0 else
-                      button_queue(5)(buffer_tail-1);
+  controller_data(5) <= button_queue(5)(address_to_use);
 
-  controller_data(6) <= button_queue(6)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(6)(31) when buffer_tail = 0 else
-                      button_queue(6)(buffer_tail-1);
+  controller_data(6) <= button_queue(6)(address_to_use);
                       
-  controller_data(7) <= button_queue(7)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(7)(31) when buffer_tail = 0 else
-                      button_queue(7)(buffer_tail-1);
+  controller_data(7) <= button_queue(7)(address_to_use);
 
-  controller_data(8) <= button_queue(8)(buffer_tail) when buffer_head /= buffer_tail else
-                      button_queue(8)(31) when buffer_tail = 0 else
-                      button_queue(8)(buffer_tail-1);
+  controller_data(8) <= button_queue(8)(address_to_use);
 
   p1_d0 <= multitap1_d0 when use_multitap1 = '1' else
            controller_d0(1);

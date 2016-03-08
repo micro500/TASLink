@@ -6,23 +6,14 @@ entity main is
     Port ( CLK : in std_logic;
            RX : in std_logic;
            TX : out std_logic;
-           btn : in  STD_LOGIC_VECTOR (3 downto 0);
-           p1_latch : in  STD_LOGIC;
-           p1_clock : in  STD_LOGIC;
-           p1_d0 : out STD_LOGIC;
-           p1_d1 : out STD_LOGIC;
-           p1_io : in STD_LOGIC;
-           p2_latch : in std_logic;
-           p2_clock : in std_logic;
-           p2_d0 : out std_logic;
-           p2_d1 : out std_logic;
-           p2_io : in std_logic;
-           p1_d0_oe : out std_logic;
-           p2_d0_oe : out std_logic;
-           p1_d1_oe : out std_logic;
-           p2_d1_oe : out std_logic;
-           debug : out STD_LOGIC_VECTOR (3 downto 0);
-           l: out STD_LOGIC_VECTOR(3 downto 0));
+           console_latch : in  STD_LOGIC_VECTOR(1 to 2);
+           console_clock : in  STD_LOGIC_VECTOR(1 to 2);
+           console_d0 : out STD_LOGIC_VECTOR(1 to 2);
+           console_d1 : out STD_LOGIC_VECTOR(1 to 2);
+           console_io : in STD_LOGIC_VECTOR(1 to 2);
+           console_d0_oe : out std_logic_VECTOR(1 to 2);
+           console_d1_oe : out std_logic_VECTOR(1 to 2);
+           debug : out STD_LOGIC_VECTOR (7 downto 0));
 end main;
 
 architecture Behavioral of main is
@@ -96,22 +87,15 @@ architecture Behavioral of main is
   end component;
 
   -- Filtered signals coming from the console
-  signal p1_clock_f : std_logic;
-  signal p1_latch_f : std_logic;
-  signal p1_io_f : std_logic;
-  signal p2_clock_f : std_logic;
-  signal p2_latch_f : std_logic;
-  signal p2_io_f : std_logic;
+  signal console_clock_f : std_logic_vector(1 to 2);
+  signal console_latch_f : std_logic_vector(1 to 2);
+  signal console_io_f : std_logic_vector(1 to 2);
   
   -- Toggle signals, useful for monitoring when the FPGA detects a rising edge
-  signal p1_clock_toggle : std_logic;
-  signal p1_latch_toggle : std_logic;
-  signal p1_clock_f_toggle : std_logic;
-  signal p1_latch_f_toggle : std_logic;
-  signal p2_clock_toggle : std_logic;
-  signal p2_latch_toggle : std_logic;
-  signal p2_clock_f_toggle : std_logic;
-  signal p2_latch_f_toggle : std_logic;
+  signal console_clock_toggle : std_logic_vector(1 to 2);
+  signal console_latch_toggle : std_logic_vector(1 to 2);
+  signal console_clock_f_toggle : std_logic_vector(1 to 2);
+  signal console_latch_f_toggle : std_logic_vector(1 to 2);
   
   signal data_from_uart : STD_LOGIC_VECTOR (7 downto 0);
   signal uart_data_recieved : STD_LOGIC := '0';
@@ -182,54 +166,36 @@ architecture Behavioral of main is
   signal address_to_use : integer range 0 to 63;
 begin
 
-  p1_latch_filter: filter port map (signal_in => p1_latch,
+  GENERATE_FILTERS:
+  for I in 1 to 2 generate
+    latch_filters: filter port map (signal_in => console_latch(I),
                                     clk => CLK,
-                                    signal_out => p1_latch_f);
+                                    signal_out => console_latch_f(I));
                                  
-  p1_clock_filter: filter port map (signal_in => p1_clock,
+    clock_filters: filter port map (signal_in => console_clock(I),
                                     clk => CLK,
-                                    signal_out => p1_clock_f);
+                                    signal_out => console_clock_f(I));
+    
+    io_filters: filter port map (signal_in => console_io(I),
+                                 clk => CLK,
+                                 signal_out => console_io_f(I));
+  end generate GENERATE_FILTERS;
   
-  p1_io_filter: filter port map (signal_in => p1_io,
-                                 clk => CLK,
-                                 signal_out => p1_io_f);
+  GENERATE_TOGGLES:
+  for I in 1 to 2 generate
+    latch_toggles: toggle port map (signal_in => console_latch(I),
+                                    signal_out => console_latch_toggle(I));
                                  
-  p2_latch_filter: filter port map (signal_in => p2_latch,
-                                    clk => CLK,
-                                    signal_out => p2_latch_f);
-                                 
-  p2_clock_filter: filter port map (signal_in => p2_clock,
-                                    clk => CLK,
-                                    signal_out => p2_clock_f);
-
-  p2_io_filter: filter port map (signal_in => p2_io,
-                                 clk => CLK,
-                                 signal_out => p2_io_f);
-
+    latch_f_toggles: toggle port map (signal_in => console_latch_f(I),
+                                      signal_out => console_latch_f_toggle(I));
+    
+    clock_toggles: toggle port map (signal_in => console_clock(I),
+                                    signal_out => console_clock_toggle(I));
+    
+    clock_f_toggles: toggle port map (signal_in => console_clock_f(I),
+                                      signal_out => console_clock_f_toggle(I));
+  end generate GENERATE_TOGGLES;
                                     
-  p1latch_toggle: toggle port map (signal_in => p1_latch,
-                                   signal_out => p1_latch_toggle);
-                                 
-  p1latch_f_toggle: toggle port map (signal_in => p1_latch_f,
-                                     signal_out => p1_latch_f_toggle);
-  
-  p1clk_toggle: toggle port map (signal_in => p1_clock,
-                                 signal_out => p1_clock_toggle);
-  
-  p1clock_f_toggle: toggle port map (signal_in => p1_clock_f,
-                                     signal_out => p1_clock_f_toggle);
-
-  p2latch_toggle: toggle port map (signal_in => p2_latch,
-                                   signal_out => p2_latch_toggle);
-                                 
-  p2latch_f_toggle: toggle port map (signal_in => p2_latch_f,
-                                     signal_out => p2_latch_f_toggle);
-  
-  p2clk_toggle: toggle port map (signal_in => p2_clock,
-                                 signal_out => p2_clock_toggle);
-  
-  p2clock_f_toggle: toggle port map (signal_in => p2_clock_f,
-                                     signal_out => p2_clock_f_toggle);
                                      
   uart1: UART port map (rx_data_out => data_from_uart,
                         rx_data_was_recieved => uart_data_recieved,
@@ -589,8 +555,8 @@ uart_recieve_btye: process(CLK)
         end if;
       end if;
 
-      if (p1_latch_f /= prev_latch) then
-        if (p1_latch_f = '1') then
+      if (console_latch_f(1) /= prev_latch) then
+        if (console_latch_f(1) = '1') then
           if (windowed_mode = '1') then
             frame_timer <= 0;
             frame_timer_active <= '1';
@@ -611,7 +577,7 @@ uart_recieve_btye: process(CLK)
             end if;
           end if;
         end if;
-        prev_latch <= p1_latch_f;
+        prev_latch <= console_latch_f(1);
       end if;
     end if;
   end process;
@@ -636,57 +602,57 @@ uart_recieve_btye: process(CLK)
 
   controller_data(8) <= button_queue(8)(address_to_use);
 
-  p1_d0 <= multitap_d0(1) when use_multitap1 = '1' else
-           controller_d0(1);
-  p1_d1 <= multitap_d1(1) when use_multitap1 = '1' else
-           controller_d1(1);
-  p2_d0 <= multitap_d0(2) when use_multitap2 = '1' else
-           controller_d0(2);
-  p2_d1 <= multitap_d1(2) when use_multitap2 = '1' else
-           controller_d1(2);
+  console_d0(1) <= multitap_d0(1) when use_multitap1 = '1' else
+                   controller_d0(1);
+  console_d1(1) <= multitap_d1(1) when use_multitap1 = '1' else
+                   controller_d1(1);
+  console_d0(2) <= multitap_d0(2) when use_multitap2 = '1' else
+                   controller_d0(2);
+  console_d1(2) <= multitap_d1(2) when use_multitap2 = '1' else
+                   controller_d1(2);
   
-  p1_d0_oe <= multitap_d0_oe(1) when use_multitap1 = '1' else
-              controller_d0_oe(1);
-  p1_d1_oe <= multitap_d1_oe(1) when use_multitap1 = '1' else
-              controller_d1_oe(1);
-  p2_d0_oe <= multitap_d0_oe(2) when use_multitap2 = '1' else
-              controller_d0_oe(2);
-  p2_d1_oe <= multitap_d1_oe(2) when use_multitap2 = '1' else
-              controller_d1_oe(2);
+  console_d0_oe(1) <= multitap_d0_oe(1) when use_multitap1 = '1' else
+                      controller_d0_oe(1);
+  console_d1_oe(1) <= multitap_d1_oe(1) when use_multitap1 = '1' else
+                      controller_d1_oe(1);
+  console_d0_oe(2) <= multitap_d0_oe(2) when use_multitap2 = '1' else
+                      controller_d0_oe(2);
+  console_d1_oe(2) <= multitap_d1_oe(2) when use_multitap2 = '1' else
+                      controller_d1_oe(2);
   
   controller_clock(1) <= multitap_port_clock(1)(1) when use_multitap1 = '1' else
-                         p1_clock_f;
+                         console_clock_f(1);
   controller_clock(2) <= multitap_port_clock(1)(2) when use_multitap1 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(3) <= multitap_port_clock(1)(3) when use_multitap1 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(4) <= multitap_port_clock(1)(4) when use_multitap1 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(5) <= multitap_port_clock(2)(1) when use_multitap2 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(6) <= multitap_port_clock(2)(2) when use_multitap2 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(7) <= multitap_port_clock(2)(3) when use_multitap2 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   controller_clock(8) <= multitap_port_clock(2)(4) when use_multitap2 = '1' else
-                         p2_clock_f;
+                         console_clock_f(2);
   
   controller_latch(1) <= multitap_port_latch(1)(1) when use_multitap1 = '1' else
-                         p1_latch_f;
+                         console_latch_f(1);
   controller_latch(2) <= multitap_port_latch(1)(2) when use_multitap1 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   controller_latch(3) <= multitap_port_latch(1)(3) when use_multitap1 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   controller_latch(4) <= multitap_port_latch(1)(4) when use_multitap1 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   controller_latch(5) <= multitap_port_latch(2)(1) when use_multitap2 = '1' else
-                         p1_latch_f;
+                         console_latch_f(2);
   controller_latch(6) <= multitap_port_latch(2)(2) when use_multitap2 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   controller_latch(7) <= multitap_port_latch(2)(3) when use_multitap2 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   controller_latch(8) <= multitap_port_latch(2)(4) when use_multitap2 = '1' else
-                         p2_latch_f;
+                         console_latch_f(2);
   
   controller_io(1) <= '1';
   controller_io(2) <= '1';
@@ -707,13 +673,13 @@ uart_recieve_btye: process(CLK)
   controller_overread_value(8) <= '1';
   
   
-  multitap_clock(1) <= p1_clock_f;
-  multitap_latch(1) <= p1_latch_f;
-  multitap_io(1) <= p1_io_f;
+  multitap_clock(1) <= console_clock_f(1);
+  multitap_latch(1) <= console_latch_f(1);
+  multitap_io(1) <= console_io_f(1);
   
-  multitap_clock(2) <= p2_clock_f;
-  multitap_latch(2) <= p2_latch_f;
-  multitap_io(2) <= p2_io_f;
+  multitap_clock(2) <= console_clock_f(2);
+  multitap_latch(2) <= console_latch_f(2);
+  multitap_io(2) <= console_io_f(2);
   
   multitap_port_d0(1)(1) <= controller_d0(1);
   multitap_port_d0(1)(2) <= controller_d0(2);
@@ -756,12 +722,14 @@ uart_recieve_btye: process(CLK)
   multitap_port_d1_oe(2)(3) <= controller_d1_oe(7);
   multitap_port_d1_oe(2)(4) <= controller_d1_oe(8);
 
-  l <= std_logic_vector(to_unsigned(buffer_tail, 4));
-    
-  debug(0) <= p1_latch_toggle;
-  debug(1) <= p2_latch_f;
-  debug(2) <= p1_clock_toggle;
-  debug(3) <= p2_clock_f;
+  debug(0) <= console_latch_toggle(1);
+  debug(1) <= console_latch_f(2);
+  debug(2) <= console_clock_toggle(1);
+  debug(3) <= console_clock_f(2);
+  debug(4) <= '1';
+  debug(5) <= '1';
+  debug(6) <= '1';
+  debug(7) <= '1';
 
 end Behavioral;
 

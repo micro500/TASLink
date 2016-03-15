@@ -16,16 +16,7 @@ entity main is
            debug : out STD_LOGIC_VECTOR (7 downto 0));
 end main;
 
-architecture Behavioral of main is
-  component shift_register is
-    Port ( latch : in  STD_LOGIC;
-           clock : in  STD_LOGIC;
-           din : in  STD_LOGIC_VECTOR (7 downto 0);
-           dout : out  STD_LOGIC;
-           sin : in STD_LOGIC;
-           clk : in std_logic);
-  end component;
-  
+architecture Behavioral of main is 
   component filter is
     Port ( signal_in : in  STD_LOGIC;
            clk : in  STD_LOGIC;
@@ -35,6 +26,17 @@ architecture Behavioral of main is
   component toggle is
     Port ( signal_in : in  STD_LOGIC;
            signal_out : out  STD_LOGIC);
+  end component;
+  
+  component fifo is
+    Port ( data_in : in  STD_LOGIC_VECTOR (31 downto 0);
+           write_en : in  STD_LOGIC;
+           data_out : out  STD_LOGIC_VECTOR (31 downto 0);
+           read_en : in  STD_LOGIC;
+           clk : in  STD_LOGIC;
+           empty : out  STD_LOGIC;
+           full : out  STD_LOGIC;
+           clear : in  STD_LOGIC);
   end component;
   
   component UART is
@@ -108,12 +110,14 @@ architecture Behavioral of main is
   signal serial_receive_mode : std_logic_vector (2 downto 0) := (others => '0');
   signal uart_buffer_ptr : integer range 0 to 16 := 0;
   
-  type BUTTON_DATA_buffer is array(0 to 31) of std_logic_vector(31 downto 0);
-  type BUTTON_DATA_buffer_array is array(1 to 8) of BUTTON_DATA_buffer;
-  signal button_queue : BUTTON_DATA_buffer_array;
-    
-  signal buffer_tail : integer range 0 to 31 := 0;
-  signal buffer_head : integer range 0 to 31 := 0;
+  type vector32 is array (natural range <>) of std_logic_vector(31 downto 0);
+  signal buffer_new_data : vector32(1 to 8);
+  signal buffer_write : std_logic_vector(1 to 8);
+  signal buffer_data : vector32(1 to 8);
+  signal buffer_read : std_logic_vector(1 to 8);
+  signal buffer_empty : std_logic_vector(1 to 8);
+  signal buffer_full : std_logic_vector(1 to 8);
+  signal buffer_clear : std_logic_vector(1 to 8);
   
   signal prev_latch : std_logic := '0';
   
@@ -137,7 +141,6 @@ architecture Behavioral of main is
   signal controller_overread_value : logic_array(8 downto 1);
   signal controller_connected : logic_array(8 downto 1);
   
-  type vector32 is array (natural range <>) of std_logic_vector(31 downto 0);
   signal controller_data : vector32(8 downto 1);
 
 
@@ -221,6 +224,16 @@ begin
                                      size => controller_size,
                                      connected => controller_connected(I),
                                      clk => clk);
+
+    buffers: fifo port map ( data_in => buffer_new_data(I),
+                             write_en => buffer_write(I),
+                             data_out => buffer_data(I),
+                             read_en => buffer_read(I),
+                             clk => clk,
+                             empty => buffer_empty(I),
+                             full => buffer_full(I),
+                             clear => buffer_clear(I));
+                             
   end generate GENERATE_CONTROLLERS;
   
   GENERATE_MULTITAPS:
@@ -248,6 +261,9 @@ begin
 uart_recieve_btye: process(CLK)
 	begin
 		if (rising_edge(CLK)) then
+      buffer_clear <= "00000000";
+      buffer_write <= "00000000";
+    
 			if (uart_byte_waiting = '1' and uart_data_recieved = '0') then
         case uart_buffer_ptr is
           when 0 =>
@@ -258,8 +274,7 @@ uart_recieve_btye: process(CLK)
                 serial_receive_mode <= "000";
               
               when x"63" => -- 'c'
-                buffer_head <= buffer_tail;
-                
+                buffer_clear <= "11111111";
                 uart_buffer_ptr <= 0;  
               
               when x"77" => -- 'w'
@@ -285,8 +300,9 @@ uart_recieve_btye: process(CLK)
           when 1 =>
             case serial_receive_mode is
               when "000" =>
-                if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-                  button_queue(1)(buffer_head) <= "111111111111111111111111" & data_from_uart;
+                buffer_new_data(1) <= "111111111111111111111111" & data_from_uart;
+                if (controller_size = "00") then
+                  buffer_write(1) <= '1';
                 end if;
                 
                 uart_buffer_ptr <= 2;
@@ -404,116 +420,82 @@ uart_recieve_btye: process(CLK)
             end case;
             
           when 2 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              if (controller_size = "00") then
-                -- add it to the next spot
-                button_queue(2)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-                -- move
-                if (buffer_head = 31) then
-                  buffer_head <= 0;
-                else
-                  buffer_head <= buffer_head + 1;
-                end if;
-                uart_buffer_ptr <= 0;
-                
-              elsif (controller_size = "01") then
-                button_queue(1)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(1)(buffer_head)(7 downto 0);
-                uart_buffer_ptr <= 3;
-              else
-                uart_buffer_ptr <= 0;
-              end if;
+            if (controller_size = "00") then
+              -- add it to the next spot
+              buffer_new_data(2) <= "111111111111111111111111" & data_from_uart;
+              buffer_write(2) <= '1';
+              uart_buffer_ptr <= 0;
+              
+            elsif (controller_size = "01") then
+              buffer_new_data(1) <= "1111111111111111" & data_from_uart & buffer_new_data(1)(7 downto 0);
+              buffer_write(1) <= '1';
+              uart_buffer_ptr <= 3;
+            else
+              uart_buffer_ptr <= 0;
             end if;
             
           when 3 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(2)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(2) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 4;
           
           when 4 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(2)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(2)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(2) <= "1111111111111111" & data_from_uart & buffer_new_data(2)(7 downto 0);
+            buffer_write(2) <= '1';
             uart_buffer_ptr <= 5;
 
           when 5 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(3)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(3) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 6;
           
           when 6 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(3)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(3)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(3) <= "1111111111111111" & data_from_uart & buffer_new_data(3)(7 downto 0);
+            buffer_write(3) <= '1';
             uart_buffer_ptr <= 7;
           
           when 7 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(4)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(4) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 8;
           
           when 8 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(4)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(4)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(4) <= "1111111111111111" & data_from_uart & buffer_new_data(4)(7 downto 0);
+            buffer_write(4) <= '1';
             uart_buffer_ptr <= 9;
 
           when 9 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(5)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(5) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 10;
           
           when 10 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(5)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(5)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(5) <= "1111111111111111" & data_from_uart & buffer_new_data(5)(7 downto 0);
+            buffer_write(5) <= '1';
             uart_buffer_ptr <= 11;
           
           when 11 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(6)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(6) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 12;
           
           when 12 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(6)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(6)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(6) <= "1111111111111111" & data_from_uart & buffer_new_data(6)(7 downto 0);
+            buffer_write(6) <= '1';
             uart_buffer_ptr <= 13;
 
           when 13 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(7)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(7) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 14;
           
           when 14 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(7)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(7)(buffer_head)(7 downto 0);
-            end if;  
+            buffer_new_data(7) <= "1111111111111111" & data_from_uart & buffer_new_data(7)(7 downto 0);
+            buffer_write(7) <= '1';
             uart_buffer_ptr <= 15;
           
           when 15 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(8)(buffer_head) <= "111111111111111111111111" & data_from_uart;
-            end if;  
+            buffer_new_data(8) <= "111111111111111111111111" & data_from_uart;
             uart_buffer_ptr <= 16;
           
           when 16 =>
-            if ((buffer_head = 31 and buffer_tail /= 0) or (buffer_head /= 31 and (buffer_head + 1) /= buffer_tail)) then
-              button_queue(8)(buffer_head) <= "1111111111111111" & data_from_uart & button_queue(8)(buffer_head)(7 downto 0);
-              
-              -- move
-              if (buffer_head = 31) then
-                buffer_head <= 0;
-              else
-                buffer_head <= buffer_head + 1;
-              end if;
-              uart_buffer_ptr <= 0;              
-            end if;  
+            buffer_new_data(8) <= "1111111111111111" & data_from_uart & buffer_new_data(8)(7 downto 0);
+            buffer_write(8) <= '1';
+
             uart_buffer_ptr <= 0;
           
           when others =>
@@ -529,20 +511,14 @@ uart_recieve_btye: process(CLK)
   begin
     if (rising_edge(clk)) then
       uart_write <= '0';
+      buffer_read <= "00000000";
       
       if (windowed_mode = '1' and frame_timer_active = '1') then
         if (frame_timer = 96000) then
           frame_timer <= 0;
           frame_timer_active <= '0';
         
-          -- move tail pointer if possible
-          if (buffer_tail /= buffer_head) then
-            if (buffer_tail = 31) then
-              buffer_tail <= 0;
-            else
-              buffer_tail <= buffer_tail + 1;
-            end if;
-          end if;
+          buffer_read <= "11111111";
           
           -- Send feedback that a frame was consumed
           if (uart_buffer_full = '0') then
@@ -561,14 +537,7 @@ uart_recieve_btye: process(CLK)
             frame_timer <= 0;
             frame_timer_active <= '1';
           else
-            -- move tail pointer if possible
-            if (buffer_tail /= buffer_head) then
-              if (buffer_tail = 31) then
-                buffer_tail <= 0;
-              else
-                buffer_tail <= buffer_tail + 1;
-              end if;
-            end if;
+            buffer_read <= "11111111";
             
             -- Send feedback that a frame was consumed
             if (uart_buffer_full = '0') then
@@ -582,25 +551,14 @@ uart_recieve_btye: process(CLK)
     end if;
   end process;
   
-  address_to_use <= buffer_tail when buffer_head /= buffer_tail else
-                    31 when buffer_tail = 0 else
-                    buffer_tail - 1;
-
-  controller_data(1) <= button_queue(1)(address_to_use);
-
-  controller_data(2) <= button_queue(2)(address_to_use);
-  
-  controller_data(3) <= button_queue(3)(address_to_use);
-
-  controller_data(4) <= button_queue(4)(address_to_use);
-                      
-  controller_data(5) <= button_queue(5)(address_to_use);
-
-  controller_data(6) <= button_queue(6)(address_to_use);
-                      
-  controller_data(7) <= button_queue(7)(address_to_use);
-
-  controller_data(8) <= button_queue(8)(address_to_use);
+  controller_data(1) <= buffer_data(1);
+  controller_data(2) <= buffer_data(2);
+  controller_data(3) <= buffer_data(3);
+  controller_data(4) <= buffer_data(4);
+  controller_data(5) <= buffer_data(5);
+  controller_data(6) <= buffer_data(6);
+  controller_data(7) <= buffer_data(7);
+  controller_data(8) <= buffer_data(8);
 
   console_d0(1) <= multitap_d0(1) when use_multitap1 = '1' else
                    controller_d0(1);

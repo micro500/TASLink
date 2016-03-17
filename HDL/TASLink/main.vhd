@@ -107,8 +107,13 @@ architecture Behavioral of main is
   signal uart_buffer_full : STD_LOGIC;
   signal uart_write : STD_LOGIC := '0';
   
-  signal serial_receive_mode : std_logic_vector (2 downto 0) := (others => '0');
-  signal uart_buffer_ptr : integer range 0 to 16 := 0;
+  signal data_receive_mask : std_logic_vector(8 downto 1) := (others => '0');
+  signal active_setup_cmd : std_logic_vector(7 downto 0);
+  
+  type uart_states is (main_cmd, button_data_cmd, setup_cmd, setup_cmd_data);
+  signal uart_state : uart_states := main_cmd;
+  signal data_controller_id : integer range 1 to 8;
+  signal data_byte_id : integer range 1 to 4;
   
   type vector32 is array (natural range <>) of std_logic_vector(31 downto 0);
   signal buffer_new_data : vector32(1 to 8);
@@ -128,8 +133,6 @@ architecture Behavioral of main is
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
   
-  signal controller_size : std_logic_vector(1 downto 0) := "00";
-  
   type logic_array is array (natural range <>) of std_logic;
   signal controller_clock : logic_array(8 downto 1);
   signal controller_latch : logic_array(8 downto 1);
@@ -138,8 +141,10 @@ architecture Behavioral of main is
   signal controller_d1 : logic_array(8 downto 1);
   signal controller_d0_oe : logic_array(8 downto 1);
   signal controller_d1_oe : logic_array(8 downto 1);
-  signal controller_overread_value : logic_array(8 downto 1);
+  signal controller_overread_value : logic_array(8 downto 1) := (others => '0');
   signal controller_connected : logic_array(8 downto 1);
+  type vector2 is array (natural range <>) of std_logic_vector(1 downto 0);
+  signal controller_size : vector2(1 to 8) := (others => "00");
   
   signal controller_data : vector32(8 downto 1);
 
@@ -221,7 +226,7 @@ begin
                                      console_d1_oe => controller_d1_oe(I),
                                      data => controller_data(I),
                                      overread_value => controller_overread_value(I),
-                                     size => controller_size,
+                                     size => controller_size(I),
                                      connected => controller_connected(I),
                                      clk => clk);
 
@@ -261,248 +266,163 @@ begin
 uart_recieve_btye: process(CLK)
 	begin
 		if (rising_edge(CLK)) then
+      uart_data_recieved <= '0';
       buffer_clear <= "00000000";
       buffer_write <= "00000000";
     
 			if (uart_byte_waiting = '1' and uart_data_recieved = '0') then
-        case uart_buffer_ptr is
-          when 0 =>
+        case uart_state is
+          when main_cmd =>
             case data_from_uart is
               when x"66" => -- 'f'
                 
-                uart_buffer_ptr <= 1;
-                serial_receive_mode <= "000";
+                data_receive_mask <= "11111111";
+                data_controller_id <= 1;
+                data_byte_id <= 1;
+                uart_state <= button_data_cmd;
               
               when x"63" => -- 'c'
                 buffer_clear <= "11111111";
-                uart_buffer_ptr <= 0;  
+                --uart_state <= main_cmd;
               
               when x"77" => -- 'w'
                 windowed_mode <= '1';
+                --uart_state <= main_cmd;
                 
               when x"6C" => -- 'l'
                 windowed_mode <= '0';
-              
-              when x"6E" => -- 'n'
-                controller_size <= "00";
-                uart_buffer_ptr <= 1;
-                serial_receive_mode <= "001";
-              
+                --uart_state <= main_cmd;
+                
               when x"73" => -- 's'
-                controller_size <= "01";
-                uart_buffer_ptr <= 1;
-                serial_receive_mode <= "010";
-              
+                uart_state <= setup_cmd;
+                
               when others =>
               
             end case;
-            
-          when 1 =>
-            case serial_receive_mode is
-              when "000" =>
-                buffer_new_data(1) <= "111111111111111111111111" & data_from_uart;
-                if (controller_size = "00") then
-                  buffer_write(1) <= '1';
-                end if;
-                
-                uart_buffer_ptr <= 2;
-              
-              when "001" =>
-                case data_from_uart is
-                  when x"30" => -- '0'
-                    controller_connected(1) <= '0';
-                    controller_connected(2) <= '0';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
                     
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-                  
-                  when x"31" => -- '1'
-                    controller_connected(1) <= '1';
-                    controller_connected(2) <= '0';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
-                    
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-
-                  when x"32" => -- '2'
-                    controller_connected(1) <= '1';
-                    controller_connected(2) <= '1';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
-                    
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-                  
-                  when others =>
-                  
-                end case;
-                
-                uart_buffer_ptr <= 0;
-
-              when "010" =>
-                case data_from_uart is
-                  when x"30" => -- '0'
-                    controller_connected(1) <= '0';
-                    controller_connected(2) <= '0';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
-                    
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-                  
-                  when x"31" => -- '1'
-                    controller_connected(1) <= '1';
-                    controller_connected(2) <= '0';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
-                    
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-
-                  when x"32" => -- '2'
-                    controller_connected(1) <= '1';
-                    controller_connected(2) <= '1';
-                    controller_connected(3) <= '0';
-                    controller_connected(4) <= '0';
-                    controller_connected(5) <= '0';
-                    controller_connected(6) <= '0';
-                    controller_connected(7) <= '0';
-                    controller_connected(8) <= '0';
-                    
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
-                    
-                  when x"38" => -- '8'
-                    controller_connected(1) <= '1';
-                    controller_connected(2) <= '1';
-                    controller_connected(3) <= '1';
-                    controller_connected(4) <= '1';
-                    controller_connected(5) <= '1';
-                    controller_connected(6) <= '1';
-                    controller_connected(7) <= '1';
-                    controller_connected(8) <= '1';
-                    
-                    use_multitap1 <= '1';
-                    use_multitap2 <= '1';
-                  
-                  when others =>
-                  
-                end case;
-                
-                uart_buffer_ptr <= 0;
-              
-              when others =>
-                uart_buffer_ptr <= 0;
-                
-            end case;
-            
-          when 2 =>
-            if (controller_size = "00") then
-              -- add it to the next spot
-              buffer_new_data(2) <= "111111111111111111111111" & data_from_uart;
-              buffer_write(2) <= '1';
-              uart_buffer_ptr <= 0;
-              
-            elsif (controller_size = "01") then
-              buffer_new_data(1) <= "1111111111111111" & data_from_uart & buffer_new_data(1)(7 downto 0);
-              buffer_write(1) <= '1';
-              uart_buffer_ptr <= 3;
+          when button_data_cmd =>
+            -- Store this byte of data in the right spot
+            if (data_byte_id = 1) then
+              buffer_new_data(data_controller_id) <= "111111111111111111111111" & data_from_uart;
+            elsif (data_byte_id = 2) then
+              buffer_new_data(data_controller_id) <= "1111111111111111" & data_from_uart & buffer_new_data(data_controller_id)(7 downto 0);
+            elsif (data_byte_id = 3) then
+              buffer_new_data(data_controller_id) <= "11111111" & data_from_uart & buffer_new_data(data_controller_id)(15 downto 0);
             else
-              uart_buffer_ptr <= 0;
+              buffer_new_data(data_controller_id) <= data_from_uart & buffer_new_data(data_controller_id)(23 downto 0);
             end if;
             
-          when 3 =>
-            buffer_new_data(2) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 4;
-          
-          when 4 =>
-            buffer_new_data(2) <= "1111111111111111" & data_from_uart & buffer_new_data(2)(7 downto 0);
-            buffer_write(2) <= '1';
-            uart_buffer_ptr <= 5;
+            -- Do we need to go to the next controller?
+            if ((data_byte_id = 1 and controller_size(data_controller_id) = "00") or (data_byte_id = 2 and controller_size(data_controller_id) = "01") or (data_byte_id = 3 and controller_size(data_controller_id) = "10") or data_byte_id = 4) then
+              -- Store the data in the fifo
+              buffer_write(data_controller_id) <= '1';
+              data_byte_id <= 1;
+              if (data_controller_id < 2 and data_receive_mask(2) = '1') then
+                data_controller_id <= 2;
+              elsif (data_controller_id < 3 and data_receive_mask(3) = '1') then
+                data_controller_id <= 3;
+              elsif (data_controller_id < 4 and data_receive_mask(4) = '1') then
+                data_controller_id <= 4;
+              elsif (data_controller_id < 5 and data_receive_mask(5) = '1') then
+                data_controller_id <= 5;
+              elsif (data_controller_id < 6 and data_receive_mask(6) = '1') then
+                data_controller_id <= 6;
+              elsif (data_controller_id < 7 and data_receive_mask(7) = '1') then
+                data_controller_id <= 7;
+              elsif (data_controller_id < 8 and data_receive_mask(8) = '1') then
+                data_controller_id <= 8;
+              else
+                uart_state <= main_cmd;
+              end if;
+            else
+              -- Go to the next byte
+              data_byte_id <= data_byte_id + 1;
+            end if;
+         
+         when setup_cmd =>
+            active_setup_cmd <= data_from_uart;
+            uart_state <= setup_cmd_data;
+         
+         when setup_cmd_data =>
+           case active_setup_cmd is
+              when x"31" => -- '1'
+                controller_connected(1) <= data_from_uart(7);
+                controller_overread_value(1) <= data_from_uart(6);
+                controller_size(1) <= data_from_uart(1 downto 0);
 
-          when 5 =>
-            buffer_new_data(3) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 6;
-          
-          when 6 =>
-            buffer_new_data(3) <= "1111111111111111" & data_from_uart & buffer_new_data(3)(7 downto 0);
-            buffer_write(3) <= '1';
-            uart_buffer_ptr <= 7;
-          
-          when 7 =>
-            buffer_new_data(4) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 8;
-          
-          when 8 =>
-            buffer_new_data(4) <= "1111111111111111" & data_from_uart & buffer_new_data(4)(7 downto 0);
-            buffer_write(4) <= '1';
-            uart_buffer_ptr <= 9;
-
-          when 9 =>
-            buffer_new_data(5) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 10;
-          
-          when 10 =>
-            buffer_new_data(5) <= "1111111111111111" & data_from_uart & buffer_new_data(5)(7 downto 0);
-            buffer_write(5) <= '1';
-            uart_buffer_ptr <= 11;
-          
-          when 11 =>
-            buffer_new_data(6) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 12;
-          
-          when 12 =>
-            buffer_new_data(6) <= "1111111111111111" & data_from_uart & buffer_new_data(6)(7 downto 0);
-            buffer_write(6) <= '1';
-            uart_buffer_ptr <= 13;
-
-          when 13 =>
-            buffer_new_data(7) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 14;
-          
-          when 14 =>
-            buffer_new_data(7) <= "1111111111111111" & data_from_uart & buffer_new_data(7)(7 downto 0);
-            buffer_write(7) <= '1';
-            uart_buffer_ptr <= 15;
-          
-          when 15 =>
-            buffer_new_data(8) <= "111111111111111111111111" & data_from_uart;
-            uart_buffer_ptr <= 16;
-          
-          when 16 =>
-            buffer_new_data(8) <= "1111111111111111" & data_from_uart & buffer_new_data(8)(7 downto 0);
-            buffer_write(8) <= '1';
-
-            uart_buffer_ptr <= 0;
-          
+              when x"32" => -- '2'
+                controller_connected(2) <= data_from_uart(7);
+                controller_overread_value(2) <= data_from_uart(6);
+                controller_size(2) <= data_from_uart(1 downto 0);
+                
+              when x"33" => -- '3'
+                controller_connected(3) <= data_from_uart(7);
+                controller_overread_value(3) <= data_from_uart(6);
+                controller_size(3) <= data_from_uart(1 downto 0);
+                
+              when x"34" => -- '4'
+                controller_connected(4) <= data_from_uart(7);
+                controller_overread_value(4) <= data_from_uart(6);
+                controller_size(4) <= data_from_uart(1 downto 0);
+                
+              when x"35" => -- '5'
+                controller_connected(5) <= data_from_uart(7);
+                controller_overread_value(5) <= data_from_uart(6);
+                controller_size(5) <= data_from_uart(1 downto 0);
+                
+              when x"36" => -- '6'
+                controller_connected(6) <= data_from_uart(7);
+                controller_overread_value(6) <= data_from_uart(6);
+                controller_size(6) <= data_from_uart(1 downto 0);
+                
+              when x"37" => -- '7'
+                controller_connected(7) <= data_from_uart(7);
+                controller_overread_value(7) <= data_from_uart(6);
+                controller_size(7) <= data_from_uart(1 downto 0);
+                
+              when x"38" => -- '8'
+                controller_connected(8) <= data_from_uart(7);
+                controller_overread_value(8) <= data_from_uart(6);
+                controller_size(8) <= data_from_uart(1 downto 0);
+                
+              when x"63" => -- 'c'
+                case data_from_uart is
+                  when x"00" =>
+                    use_multitap1 <= '0';
+                    use_multitap2 <= '0';
+                  
+                  when x"02" =>
+                    use_multitap1 <= '1';
+                    use_multitap2 <= '0';
+                    
+                  when x"05" =>
+                    use_multitap1 <= '1';
+                    use_multitap2 <= '0';
+                    
+                  when x"06" =>
+                    use_multitap1 <= '0';
+                    use_multitap2 <= '1';
+                  
+                  when x"07" =>
+                    use_multitap1 <= '0';
+                    use_multitap2 <= '1';
+                  
+                  when x"08" =>
+                    use_multitap1 <= '1';
+                    use_multitap2 <= '1';
+                    
+                  when others =>
+                end case;
+                              
+              when others =>
+              
+            end case;
+            
+            uart_state <= main_cmd;
+                                
           when others =>
         end case;
       	uart_data_recieved <= '1';
-			else
-				uart_data_recieved <= '0';
 			end if;
     end if;
 	end process;
@@ -565,18 +485,18 @@ uart_recieve_btye: process(CLK)
   console_d1(1) <= multitap_d1(1) when use_multitap1 = '1' else
                    controller_d1(1);
   console_d0(2) <= multitap_d0(2) when use_multitap2 = '1' else
-                   controller_d0(2);
+                   controller_d0(5);
   console_d1(2) <= multitap_d1(2) when use_multitap2 = '1' else
-                   controller_d1(2);
+                   controller_d1(5);
   
   console_d0_oe(1) <= multitap_d0_oe(1) when use_multitap1 = '1' else
                       controller_d0_oe(1);
   console_d1_oe(1) <= multitap_d1_oe(1) when use_multitap1 = '1' else
                       controller_d1_oe(1);
   console_d0_oe(2) <= multitap_d0_oe(2) when use_multitap2 = '1' else
-                      controller_d0_oe(2);
+                      controller_d0_oe(5);
   console_d1_oe(2) <= multitap_d1_oe(2) when use_multitap2 = '1' else
-                      controller_d1_oe(2);
+                      controller_d1_oe(5);
   
   controller_clock(1) <= multitap_port_clock(1)(1) when use_multitap1 = '1' else
                          console_clock_f(1);
@@ -620,15 +540,6 @@ uart_recieve_btye: process(CLK)
   controller_io(6) <= '1';
   controller_io(7) <= '1';
   controller_io(8) <= '1';
-  
-  controller_overread_value(1) <= '1';
-  controller_overread_value(2) <= '1';
-  controller_overread_value(3) <= '1';
-  controller_overread_value(4) <= '1';
-  controller_overread_value(5) <= '1';
-  controller_overread_value(6) <= '1';
-  controller_overread_value(7) <= '1';
-  controller_overread_value(8) <= '1';
   
   
   multitap_clock(1) <= console_clock_f(1);

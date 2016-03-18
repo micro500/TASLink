@@ -4,7 +4,7 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity fifo is
     Generic (
-        constant FIFO_DEPTH : positive := 256
+        constant FIFO_DEPTH : positive := 64
      );
     Port ( data_in : in  STD_LOGIC_VECTOR (31 downto 0);
            write_en : in  STD_LOGIC;

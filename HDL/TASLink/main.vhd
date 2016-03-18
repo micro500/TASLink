@@ -532,14 +532,22 @@ uart_recieve_btye: process(CLK)
   controller_latch(8) <= multitap_port_latch(2)(4) when use_multitap2 = '1' else
                          console_latch_f(2);
   
-  controller_io(1) <= '1';
-  controller_io(2) <= '1';
-  controller_io(3) <= '1';
-  controller_io(4) <= '1';
-  controller_io(5) <= '1';
-  controller_io(6) <= '1';
-  controller_io(7) <= '1';
-  controller_io(8) <= '1';
+  controller_io(1) <= multitap_port_io(1)(1) when use_multitap1 = '1' else
+                      '1';
+  controller_io(2) <= multitap_port_io(1)(2) when use_multitap1 = '1' else
+                      '1';
+  controller_io(3) <= multitap_port_io(1)(3) when use_multitap1 = '1' else
+                      '1';
+  controller_io(4) <= multitap_port_io(1)(4) when use_multitap1 = '1' else
+                      '1';
+  controller_io(5) <= multitap_port_io(2)(1) when use_multitap2 = '1' else
+                      '1';
+  controller_io(6) <= multitap_port_io(2)(2) when use_multitap2 = '1' else
+                      '1';
+  controller_io(7) <= multitap_port_io(2)(3) when use_multitap2 = '1' else
+                      '1';
+  controller_io(8) <= multitap_port_io(2)(4) when use_multitap2 = '1' else
+                      '1';
   
   
   multitap_clock(1) <= console_clock_f(1);

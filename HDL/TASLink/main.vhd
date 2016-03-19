@@ -184,6 +184,9 @@ architecture Behavioral of main is
   
   signal port_clock_delay : std_logic_vector(1 to 2) := (others => '0');
 
+  type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
+  signal custom_command_mask : vector8(1 to 8) := (others => (others => '0'));
+
 begin
 
   GENERATE_FILTERS:
@@ -299,6 +302,110 @@ uart_recieve_btye: process(CLK)
                 data_byte_id <= 1;
                 uart_state <= button_data_cmd;
               
+              when x"41" => -- 'A'
+                
+                data_receive_mask <= custom_command_mask(1);
+                uart_state <= button_data_cmd;
+                data_byte_id <= 1;
+                
+                if (custom_command_mask(1)(0) = '1') then
+                  data_controller_id <= 1;
+                elsif (custom_command_mask(1)(1) = '1') then
+                  data_controller_id <= 2;
+                elsif (custom_command_mask(1)(2) = '1') then
+                  data_controller_id <= 3;
+                elsif (custom_command_mask(1)(3) = '1') then
+                  data_controller_id <= 4;
+                elsif (custom_command_mask(1)(4) = '1') then
+                  data_controller_id <= 5;
+                elsif (custom_command_mask(1)(5) = '1') then
+                  data_controller_id <= 6;
+                elsif (custom_command_mask(1)(6) = '1') then
+                  data_controller_id <= 7;
+                elsif (custom_command_mask(1)(7) = '1') then
+                  data_controller_id <= 8;
+                else
+                  uart_state <= main_cmd;
+                end if;
+              
+              when x"42" => -- 'B'
+                
+                data_receive_mask <= custom_command_mask(2);
+                uart_state <= button_data_cmd;
+                data_byte_id <= 1;
+                
+                if (custom_command_mask(2)(0) = '1') then
+                  data_controller_id <= 1;
+                elsif (custom_command_mask(2)(1) = '1') then
+                  data_controller_id <= 2;
+                elsif (custom_command_mask(2)(2) = '1') then
+                  data_controller_id <= 3;
+                elsif (custom_command_mask(2)(3) = '1') then
+                  data_controller_id <= 4;
+                elsif (custom_command_mask(2)(4) = '1') then
+                  data_controller_id <= 5;
+                elsif (custom_command_mask(2)(5) = '1') then
+                  data_controller_id <= 6;
+                elsif (custom_command_mask(2)(6) = '1') then
+                  data_controller_id <= 7;
+                elsif (custom_command_mask(2)(7) = '1') then
+                  data_controller_id <= 8;
+                else
+                  uart_state <= main_cmd;
+                end if;
+                
+              when x"43" => -- 'C'
+                
+                data_receive_mask <= custom_command_mask(3);
+                uart_state <= button_data_cmd;
+                data_byte_id <= 1;
+                
+                if (custom_command_mask(3)(0) = '1') then
+                  data_controller_id <= 1;
+                elsif (custom_command_mask(3)(1) = '1') then
+                  data_controller_id <= 2;
+                elsif (custom_command_mask(3)(2) = '1') then
+                  data_controller_id <= 3;
+                elsif (custom_command_mask(3)(3) = '1') then
+                  data_controller_id <= 4;
+                elsif (custom_command_mask(3)(4) = '1') then
+                  data_controller_id <= 5;
+                elsif (custom_command_mask(3)(5) = '1') then
+                  data_controller_id <= 6;
+                elsif (custom_command_mask(3)(6) = '1') then
+                  data_controller_id <= 7;
+                elsif (custom_command_mask(3)(7) = '1') then
+                  data_controller_id <= 8;
+                else
+                  uart_state <= main_cmd;
+                end if;
+                
+              when x"44" => -- 'D'
+                
+                data_receive_mask <= custom_command_mask(4);
+                uart_state <= button_data_cmd;
+                data_byte_id <= 1;
+                
+                if (custom_command_mask(4)(0) = '1') then
+                  data_controller_id <= 1;
+                elsif (custom_command_mask(4)(1) = '1') then
+                  data_controller_id <= 2;
+                elsif (custom_command_mask(4)(2) = '1') then
+                  data_controller_id <= 3;
+                elsif (custom_command_mask(4)(3) = '1') then
+                  data_controller_id <= 4;
+                elsif (custom_command_mask(4)(4) = '1') then
+                  data_controller_id <= 5;
+                elsif (custom_command_mask(4)(5) = '1') then
+                  data_controller_id <= 6;
+                elsif (custom_command_mask(4)(6) = '1') then
+                  data_controller_id <= 7;
+                elsif (custom_command_mask(4)(7) = '1') then
+                  data_controller_id <= 8;
+                else
+                  uart_state <= main_cmd;
+                end if;
+              
               when x"63" => -- 'c'
                 buffer_clear <= "11111111";
                 --uart_state <= main_cmd;
@@ -402,6 +509,18 @@ uart_recieve_btye: process(CLK)
                 controller_connected(8) <= data_from_uart(7);
                 controller_overread_value(8) <= data_from_uart(6);
                 controller_size(8) <= data_from_uart(1 downto 0);
+                
+              when x"41" => -- 'A'
+                custom_command_mask(1) <= data_from_uart;
+              
+              when x"42" => -- 'B'
+                custom_command_mask(2) <= data_from_uart;
+
+              when x"43" => -- 'C'
+                custom_command_mask(3) <= data_from_uart;
+
+              when x"44" => -- 'D'
+                custom_command_mask(4) <= data_from_uart;
                 
               when x"63" => -- 'c'
                 case data_from_uart(3 downto 0) is

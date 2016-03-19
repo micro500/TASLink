@@ -23,12 +23,11 @@ delay: process(clk)
         -- On rising edge
         if (prev_signal_in = '0') then
           -- Start the timer
-          if (timer_active = '0') then
-            timer <= 0;
-            timer_active <= '1';
-            
-          -- Timer is finished. Write out a 1
-          elsif (timer = 192) then
+          timer <= 0;
+          timer_active <= '1';
+        -- Timer is finished. Write out a 1
+        elsif (timer_active = '1') then
+          if (timer = 192) then
             data <= '1';
             timer_active <= '0';
           

@@ -31,13 +31,13 @@ begin
 port_d0_pulled_up(1) <= port_d0(1) when port_d0_oe(1) = '0' else
                         '1';
 
-port_d0_pulled_up(2) <= port_d0(2) when port_d0_oe(1) = '0' else
+port_d0_pulled_up(2) <= port_d0(2) when port_d0_oe(2) = '0' else
                         '1';
                         
-port_d0_pulled_up(3) <= port_d0(3) when port_d0_oe(1) = '0' else
+port_d0_pulled_up(3) <= port_d0(3) when port_d0_oe(3) = '0' else
                         '1';
                         
-port_d0_pulled_up(4) <= port_d0(4) when port_d0_oe(1) = '0' else
+port_d0_pulled_up(4) <= port_d0(4) when port_d0_oe(4) = '0' else
                         '1';
 
 port_d1_pulled_up(1) <= port_d1(1) when port_d1_oe(1) = '0' else

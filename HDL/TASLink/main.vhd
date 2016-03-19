@@ -28,6 +28,12 @@ architecture Behavioral of main is
            signal_out : out  STD_LOGIC);
   end component;
   
+  component clock_delay is
+    Port ( signal_in : in  STD_LOGIC;
+           signal_delayed : out  STD_LOGIC;
+           CLK : in  STD_LOGIC);
+  end component;
+  
   component fifo is
     Port ( data_in : in  STD_LOGIC_VECTOR (31 downto 0);
            write_en : in  STD_LOGIC;
@@ -99,6 +105,10 @@ architecture Behavioral of main is
   signal console_clock_f_toggle : std_logic_vector(1 to 2);
   signal console_latch_f_toggle : std_logic_vector(1 to 2);
   
+  signal console_clock_f_delay : std_logic_vector(1 to 2);
+  
+  signal console_clock_final : std_logic_vector(1 to 2);
+  
   signal data_from_uart : STD_LOGIC_VECTOR (7 downto 0);
   signal uart_data_recieved : STD_LOGIC := '0';
   signal uart_byte_waiting : STD_LOGIC := '0';
@@ -151,6 +161,7 @@ architecture Behavioral of main is
 
   type vector4 is array (natural range <>) of std_logic_vector(1 to 4);
   
+  signal multitap_sw : std_logic_vector(1 to 2);
   signal multitap_clock : std_logic_vector(1 to 2);
   signal multitap_latch : std_logic_vector(1 to 2);
   signal multitap_io : std_logic_vector(1 to 2);
@@ -166,12 +177,13 @@ architecture Behavioral of main is
   signal multitap_port_d1 : vector4(1 to 2);
   signal multitap_port_d0_oe : vector4(1 to 2);
   signal multitap_port_d1_oe : vector4(1 to 2);
-    
-  signal use_multitap1 : std_logic := '0';
-  signal use_multitap2 : std_logic := '0';
-
   
-  signal address_to_use : integer range 0 to 63;
+  type port_config_type is (sr_controller, y_cable, multitap_2p, multitap_5p, fourscore);
+  type port_config_arr is array (natural range <>) of port_config_type;
+  signal port_config : port_config_arr(1 to 2) := (others => sr_controller);
+  
+  signal port_clock_delay : std_logic_vector(1 to 2) := (others => '0');
+
 begin
 
   GENERATE_FILTERS:
@@ -203,8 +215,14 @@ begin
     clock_f_toggles: toggle port map (signal_in => console_clock_f(I),
                                       signal_out => console_clock_f_toggle(I));
   end generate GENERATE_TOGGLES;
-                                    
-                                     
+  
+  GENERATE_DELAYS:
+  for I in 1 to 2 generate
+    clk_delay: clock_delay port map (signal_in => console_clock_f(I),
+                                     signal_delayed => console_clock_f_delay(I),
+                                     CLK => clk);
+  end generate GENERATE_DELAYS; 
+  
   uart1: UART port map (rx_data_out => data_from_uart,
                         rx_data_was_recieved => uart_data_recieved,
                         rx_byte_waiting => uart_byte_waiting,
@@ -252,7 +270,7 @@ begin
                                       console_d1_oe => multitap_d1_oe(I),
                                        
                                       clk => clk,
-                                      sw => '1',
+                                      sw => multitap_sw(I),
                                       
                                       port_latch => multitap_port_latch(I),
                                       port_clock => multitap_port_clock(I),
@@ -386,34 +404,49 @@ uart_recieve_btye: process(CLK)
                 controller_size(8) <= data_from_uart(1 downto 0);
                 
               when x"63" => -- 'c'
+                case data_from_uart(3 downto 0) is
+                  when x"0" =>
+                    port_config(1) <= sr_controller;
+                  
+                  when x"1" =>
+                    port_config(1) <= y_cable;
+                    
+                  when x"2" =>
+                    port_config(1) <= multitap_2p;
+                    
+                  when x"3" =>
+                    port_config(1) <= multitap_5p;
+                  
+                  when x"f" =>
+                    port_config(1) <= fourscore;
+                    
+                  when others => 
+                end case;
+                
+                port_clock_delay(1) <= data_from_uart(7);
+              
+              when x"64" => -- 'd'
                 case data_from_uart is
                   when x"00" =>
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '0';
+                    port_config(2) <= sr_controller;
                   
+                  when x"01" =>
+                    port_config(2) <= y_cable;
+                    
                   when x"02" =>
-                    use_multitap1 <= '1';
-                    use_multitap2 <= '0';
+                    port_config(2) <= multitap_2p;
                     
-                  when x"05" =>
-                    use_multitap1 <= '1';
-                    use_multitap2 <= '0';
-                    
-                  when x"06" =>
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '1';
+                  when x"03" =>
+                    port_config(2) <= multitap_5p;
                   
-                  when x"07" =>
-                    use_multitap1 <= '0';
-                    use_multitap2 <= '1';
-                  
-                  when x"08" =>
-                    use_multitap1 <= '1';
-                    use_multitap2 <= '1';
+                  when x"ff" =>
+                    port_config(2) <= fourscore;
                     
                   when others =>
                 end case;
-                              
+                
+                port_clock_delay(2) <= data_from_uart(7);
+              
               when others =>
               
             end case;
@@ -471,6 +504,14 @@ uart_recieve_btye: process(CLK)
     end if;
   end process;
   
+  
+  console_clock_final(1) <= console_clock_f(1) when port_clock_delay(1) = '0' else
+                            console_clock_f_delay(1);
+  
+  console_clock_final(2) <= console_clock_f(2) when port_clock_delay(2) = '0' else
+                            console_clock_f_delay(2);
+  
+  
   controller_data(1) <= buffer_data(1);
   controller_data(2) <= buffer_data(2);
   controller_data(3) <= buffer_data(3);
@@ -480,83 +521,219 @@ uart_recieve_btye: process(CLK)
   controller_data(7) <= buffer_data(7);
   controller_data(8) <= buffer_data(8);
 
-  console_d0(1) <= multitap_d0(1) when use_multitap1 = '1' else
-                   controller_d0(1);
-  console_d1(1) <= multitap_d1(1) when use_multitap1 = '1' else
-                   controller_d1(1);
-  console_d0(2) <= multitap_d0(2) when use_multitap2 = '1' else
-                   controller_d0(5);
-  console_d1(2) <= multitap_d1(2) when use_multitap2 = '1' else
-                   controller_d1(5);
-  
-  console_d0_oe(1) <= multitap_d0_oe(1) when use_multitap1 = '1' else
-                      controller_d0_oe(1);
-  console_d1_oe(1) <= multitap_d1_oe(1) when use_multitap1 = '1' else
-                      controller_d1_oe(1);
-  console_d0_oe(2) <= multitap_d0_oe(2) when use_multitap2 = '1' else
-                      controller_d0_oe(5);
-  console_d1_oe(2) <= multitap_d1_oe(2) when use_multitap2 = '1' else
-                      controller_d1_oe(5);
-  
-  controller_clock(1) <= multitap_port_clock(1)(1) when use_multitap1 = '1' else
-                         console_clock_f(1);
-  controller_clock(2) <= multitap_port_clock(1)(2) when use_multitap1 = '1' else
-                         console_clock_f(2);
-  controller_clock(3) <= multitap_port_clock(1)(3) when use_multitap1 = '1' else
-                         console_clock_f(2);
-  controller_clock(4) <= multitap_port_clock(1)(4) when use_multitap1 = '1' else
-                         console_clock_f(2);
-  controller_clock(5) <= multitap_port_clock(2)(1) when use_multitap2 = '1' else
-                         console_clock_f(2);
-  controller_clock(6) <= multitap_port_clock(2)(2) when use_multitap2 = '1' else
-                         console_clock_f(2);
-  controller_clock(7) <= multitap_port_clock(2)(3) when use_multitap2 = '1' else
-                         console_clock_f(2);
-  controller_clock(8) <= multitap_port_clock(2)(4) when use_multitap2 = '1' else
-                         console_clock_f(2);
-  
-  controller_latch(1) <= multitap_port_latch(1)(1) when use_multitap1 = '1' else
-                         console_latch_f(1);
-  controller_latch(2) <= multitap_port_latch(1)(2) when use_multitap1 = '1' else
-                         console_latch_f(2);
-  controller_latch(3) <= multitap_port_latch(1)(3) when use_multitap1 = '1' else
-                         console_latch_f(2);
-  controller_latch(4) <= multitap_port_latch(1)(4) when use_multitap1 = '1' else
-                         console_latch_f(2);
-  controller_latch(5) <= multitap_port_latch(2)(1) when use_multitap2 = '1' else
-                         console_latch_f(2);
-  controller_latch(6) <= multitap_port_latch(2)(2) when use_multitap2 = '1' else
-                         console_latch_f(2);
-  controller_latch(7) <= multitap_port_latch(2)(3) when use_multitap2 = '1' else
-                         console_latch_f(2);
-  controller_latch(8) <= multitap_port_latch(2)(4) when use_multitap2 = '1' else
-                         console_latch_f(2);
-  
-  controller_io(1) <= multitap_port_io(1)(1) when use_multitap1 = '1' else
-                      '1';
-  controller_io(2) <= multitap_port_io(1)(2) when use_multitap1 = '1' else
-                      '1';
-  controller_io(3) <= multitap_port_io(1)(3) when use_multitap1 = '1' else
-                      '1';
-  controller_io(4) <= multitap_port_io(1)(4) when use_multitap1 = '1' else
-                      '1';
-  controller_io(5) <= multitap_port_io(2)(1) when use_multitap2 = '1' else
-                      '1';
-  controller_io(6) <= multitap_port_io(2)(2) when use_multitap2 = '1' else
-                      '1';
-  controller_io(7) <= multitap_port_io(2)(3) when use_multitap2 = '1' else
-                      '1';
-  controller_io(8) <= multitap_port_io(2)(4) when use_multitap2 = '1' else
-                      '1';
+
+  console_d0(1) <= controller_d0(1) when port_config(1) = sr_controller else
+                   controller_d0(1) when port_config(1) = y_cable else
+                   multitap_d0(1)   when port_config(1) = multitap_2p else
+                   multitap_d0(1)   when port_config(1) = multitap_5p else
+                   '1';
+
+  console_d1(1) <= controller_d1(1) when port_config(1) = sr_controller else
+                   controller_d0(2) when port_config(1) = y_cable else
+                   multitap_d1(1)   when port_config(1) = multitap_2p else
+                   multitap_d1(1)   when port_config(1) = multitap_5p else
+                   '1';
+
+  console_d0(2) <= controller_d0(5) when port_config(2) = sr_controller else
+                   controller_d0(5) when port_config(2) = y_cable else
+                   multitap_d0(2)   when port_config(2) = multitap_2p else
+                   multitap_d0(2)   when port_config(2) = multitap_5p else
+                   '1';
+
+  console_d1(2) <= controller_d1(5) when port_config(2) = sr_controller else
+                   controller_d0(6) when port_config(2) = y_cable else
+                   multitap_d1(2)   when port_config(2) = multitap_2p else
+                   multitap_d1(2)   when port_config(2) = multitap_5p else
+                   '1';
   
   
-  multitap_clock(1) <= console_clock_f(1);
+  console_d0_oe(1) <= controller_d0_oe(1) when port_config(1) = sr_controller else
+                      controller_d0_oe(1) when port_config(1) = y_cable else
+                      multitap_d0_oe(1)   when port_config(1) = multitap_2p else
+                      multitap_d0_oe(1)   when port_config(1) = multitap_5p else
+                      '1';
+                      
+  console_d1_oe(1) <= controller_d1_oe(1) when port_config(1) = sr_controller else
+                      controller_d0_oe(2) when port_config(1) = y_cable else
+                      multitap_d1_oe(1)   when port_config(1) = multitap_2p else
+                      multitap_d1_oe(1)   when port_config(1) = multitap_5p else
+                      '1';  
+  
+  console_d0_oe(2) <= controller_d0_oe(5) when port_config(2) = sr_controller else
+                      controller_d0_oe(5) when port_config(2) = y_cable else
+                      multitap_d0_oe(2)   when port_config(2) = multitap_2p else
+                      multitap_d0_oe(2)   when port_config(2) = multitap_5p else
+                      '1';
+                      
+  console_d1_oe(2) <= controller_d1_oe(5) when port_config(2) = sr_controller else
+                      controller_d0_oe(6) when port_config(2) = y_cable else
+                      multitap_d1_oe(2)   when port_config(2) = multitap_2p else
+                      multitap_d1_oe(2)   when port_config(2) = multitap_5p else
+                      '1';  
+  
+  
+  controller_clock(1) <= console_clock_final(1)    when port_config(1) = sr_controller else
+                         console_clock_final(1)    when port_config(1) = y_cable else
+                         multitap_port_clock(1)(1) when port_config(1) = multitap_2p else
+                         multitap_port_clock(1)(1) when port_config(1) = multitap_5p else
+                         '1';
+
+  controller_clock(2) <= '1'                       when port_config(1) = sr_controller else
+                         console_clock_final(1)    when port_config(1) = y_cable else
+                         multitap_port_clock(1)(2) when port_config(1) = multitap_2p else
+                         multitap_port_clock(1)(2) when port_config(1) = multitap_5p else
+                         '1';
+
+  controller_clock(3) <= '1'                       when port_config(1) = sr_controller else
+                         '1'                       when port_config(1) = y_cable else
+                         multitap_port_clock(1)(3) when port_config(1) = multitap_2p else
+                         multitap_port_clock(1)(3) when port_config(1) = multitap_5p else
+                         '1';
+  
+  controller_clock(4) <= '1'                       when port_config(1) = sr_controller else
+                         '1'                       when port_config(1) = y_cable else
+                         multitap_port_clock(1)(4) when port_config(1) = multitap_2p else
+                         multitap_port_clock(1)(4) when port_config(1) = multitap_5p else
+                         '1';
+  
+  controller_clock(5) <= console_clock_final(2)    when port_config(2) = sr_controller else
+                         console_clock_final(2)    when port_config(2) = y_cable else
+                         multitap_port_clock(2)(1) when port_config(2) = multitap_2p else
+                         multitap_port_clock(2)(1) when port_config(2) = multitap_5p else
+                         '1';
+
+  controller_clock(6) <= '1'                       when port_config(2) = sr_controller else
+                         console_clock_final(2)    when port_config(2) = y_cable else
+                         multitap_port_clock(2)(2) when port_config(2) = multitap_2p else
+                         multitap_port_clock(2)(2) when port_config(2) = multitap_5p else
+                         '1';
+
+  controller_clock(7) <= '1'                       when port_config(2) = sr_controller else
+                         '1'                       when port_config(2) = y_cable else
+                         multitap_port_clock(2)(3) when port_config(2) = multitap_2p else
+                         multitap_port_clock(2)(3) when port_config(2) = multitap_5p else
+                         '1';
+  
+  controller_clock(8) <= '1'                       when port_config(2) = sr_controller else
+                         '1'                       when port_config(2) = y_cable else
+                         multitap_port_clock(2)(4) when port_config(2) = multitap_2p else
+                         multitap_port_clock(2)(4) when port_config(2) = multitap_5p else
+                         '1';
+
+
+  controller_latch(1) <= console_latch_f(1)        when port_config(1) = sr_controller else
+                         console_latch_f(1)        when port_config(1) = y_cable else
+                         multitap_port_latch(1)(1) when port_config(1) = multitap_2p else
+                         multitap_port_latch(1)(1) when port_config(1) = multitap_5p else
+                         '0';
+  
+  controller_latch(2) <= '0'                       when port_config(1) = sr_controller else
+                         console_latch_f(1)        when port_config(1) = y_cable else
+                         multitap_port_latch(1)(2) when port_config(1) = multitap_2p else
+                         multitap_port_latch(1)(2) when port_config(1) = multitap_5p else
+                         '0';
+
+  controller_latch(3) <= '0'                       when port_config(1) = sr_controller else
+                         '0'                       when port_config(1) = y_cable else
+                         multitap_port_latch(1)(3) when port_config(1) = multitap_2p else
+                         multitap_port_latch(1)(3) when port_config(1) = multitap_5p else
+                         '0';
+
+  controller_latch(4) <= '0'                       when port_config(1) = sr_controller else
+                         '0'                       when port_config(1) = y_cable else
+                         multitap_port_latch(1)(4) when port_config(1) = multitap_2p else
+                         multitap_port_latch(1)(4) when port_config(1) = multitap_5p else
+                         '0';
+
+  controller_latch(5) <= console_latch_f(2)        when port_config(2) = sr_controller else
+                         console_latch_f(2)        when port_config(2) = y_cable else
+                         multitap_port_latch(2)(1) when port_config(2) = multitap_2p else
+                         multitap_port_latch(2)(1) when port_config(2) = multitap_5p else
+                         '0';
+  
+  controller_latch(6) <= '0'                       when port_config(2) = sr_controller else
+                         console_latch_f(2)        when port_config(2) = y_cable else
+                         multitap_port_latch(2)(2) when port_config(2) = multitap_2p else
+                         multitap_port_latch(2)(2) when port_config(2) = multitap_5p else
+                         '0';
+
+  controller_latch(7) <= '0'                       when port_config(2) = sr_controller else
+                         '0'                       when port_config(2) = y_cable else
+                         multitap_port_latch(2)(3) when port_config(2) = multitap_2p else
+                         multitap_port_latch(2)(3) when port_config(2) = multitap_5p else
+                         '0';
+
+  controller_latch(8) <= '0'                       when port_config(2) = sr_controller else
+                         '0'                       when port_config(2) = y_cable else
+                         multitap_port_latch(2)(4) when port_config(2) = multitap_2p else
+                         multitap_port_latch(2)(4) when port_config(2) = multitap_5p else
+                         '0';
+
+
+  controller_io(1) <= console_io_f(1)        when port_config(1) = sr_controller else
+                      console_io_f(1)        when port_config(1) = y_cable else
+                      multitap_port_io(1)(1) when port_config(1) = multitap_2p else
+                      multitap_port_io(1)(1) when port_config(1) = multitap_5p else
+                      '1';
+
+  controller_io(2) <= '1'                    when port_config(1) = sr_controller else
+                      console_io_f(1)        when port_config(1) = y_cable else
+                      multitap_port_io(1)(2) when port_config(1) = multitap_2p else
+                      multitap_port_io(1)(2) when port_config(1) = multitap_5p else
+                      '1';
+
+  controller_io(3) <= '1'                    when port_config(1) = sr_controller else
+                      '1'                    when port_config(1) = y_cable else
+                      multitap_port_io(1)(3) when port_config(1) = multitap_2p else
+                      multitap_port_io(1)(3) when port_config(1) = multitap_5p else
+                      '1';
+
+  controller_io(4) <= '1'                    when port_config(1) = sr_controller else
+                      '1'                    when port_config(1) = y_cable else
+                      multitap_port_io(1)(4) when port_config(1) = multitap_2p else
+                      multitap_port_io(1)(4) when port_config(1) = multitap_5p else
+                      '1';
+
+  controller_io(5) <= console_io_f(2)        when port_config(2) = sr_controller else
+                      console_io_f(2)        when port_config(2) = y_cable else
+                      multitap_port_io(2)(1) when port_config(2) = multitap_2p else
+                      multitap_port_io(2)(1) when port_config(2) = multitap_5p else
+                      '1';
+
+  controller_io(6) <= '1'                    when port_config(2) = sr_controller else
+                      console_io_f(1)        when port_config(2) = y_cable else
+                      multitap_port_io(2)(2) when port_config(2) = multitap_2p else
+                      multitap_port_io(2)(2) when port_config(2) = multitap_5p else
+                      '1';
+
+  controller_io(7) <= '1'                    when port_config(2) = sr_controller else
+                      '1'                    when port_config(2) = y_cable else
+                      multitap_port_io(2)(3) when port_config(2) = multitap_2p else
+                      multitap_port_io(2)(3) when port_config(2) = multitap_5p else
+                      '1';
+
+  controller_io(8) <= '1'                    when port_config(2) = sr_controller else
+                      '1'                    when port_config(2) = y_cable else
+                      multitap_port_io(2)(4) when port_config(2) = multitap_2p else
+                      multitap_port_io(2)(4) when port_config(2) = multitap_5p else
+                      '1';
+  
+  
+  multitap_sw(1) <= '1'                    when port_config(1) = multitap_5p else
+                    '0';
+  
+  multitap_sw(2) <= '1'                    when port_config(2) = multitap_5p else
+                    '0';
+  
+  
+  multitap_clock(1) <= console_clock_final(1);
   multitap_latch(1) <= console_latch_f(1);
   multitap_io(1) <= console_io_f(1);
   
-  multitap_clock(2) <= console_clock_f(2);
+  multitap_clock(2) <= console_clock_final(2);
   multitap_latch(2) <= console_latch_f(2);
   multitap_io(2) <= console_io_f(2);
+  
   
   multitap_port_d0(1)(1) <= controller_d0(1);
   multitap_port_d0(1)(2) <= controller_d0(2);
@@ -567,6 +744,7 @@ uart_recieve_btye: process(CLK)
   multitap_port_d1(1)(2) <= controller_d1(2);
   multitap_port_d1(1)(3) <= controller_d1(3);
   multitap_port_d1(1)(4) <= controller_d1(4);
+  
   
   multitap_port_d0_oe(1)(1) <= controller_d0_oe(1);
   multitap_port_d0_oe(1)(2) <= controller_d0_oe(2);
@@ -589,6 +767,7 @@ uart_recieve_btye: process(CLK)
   multitap_port_d1(2)(3) <= controller_d1(7);
   multitap_port_d1(2)(4) <= controller_d1(8);
   
+  
   multitap_port_d0_oe(2)(1) <= controller_d0_oe(5);
   multitap_port_d0_oe(2)(2) <= controller_d0_oe(6);
   multitap_port_d0_oe(2)(3) <= controller_d0_oe(7);
@@ -598,6 +777,7 @@ uart_recieve_btye: process(CLK)
   multitap_port_d1_oe(2)(2) <= controller_d1_oe(6);
   multitap_port_d1_oe(2)(3) <= controller_d1_oe(7);
   multitap_port_d1_oe(2)(4) <= controller_d1_oe(8);
+
 
   debug(0) <= console_latch_toggle(1);
   debug(1) <= console_latch_f(2);

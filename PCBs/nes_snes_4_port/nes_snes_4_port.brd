@@ -120,10 +120,8 @@
 <text x="72.39" y="49.784" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">DEBUG</text>
 <wire x1="71.755" y1="53.594" x2="71.755" y2="59.944" width="0.254" layer="21"/>
 <wire x1="71.755" y1="45.974" x2="71.755" y2="39.624" width="0.254" layer="21"/>
-<text x="113.665" y="32.004" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">P1D1</text>
-<text x="113.665" y="29.464" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">P1D0</text>
-<text x="113.665" y="26.924" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">P2D1</text>
-<text x="113.665" y="24.384" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">P2D0</text>
+<text x="68.961" y="20.574" size="1.27" layer="21" font="vector" ratio="16" align="center-left">4D1</text>
+<text x="68.961" y="25.654" size="1.27" layer="21" font="vector" ratio="16" align="center-left">4D0</text>
 <wire x1="31.777940625" y1="49.8856" x2="31.777940625" y2="51.716940625" width="0.2032" layer="21"/>
 <wire x1="31.777940625" y1="51.716940625" x2="31.168340625" y2="51.716940625" width="0.2032" layer="21"/>
 <wire x1="31.777940625" y1="51.716940625" x2="32.387540625" y2="51.716940625" width="0.2032" layer="21"/>
@@ -151,10 +149,20 @@
 <wire x1="36.2712" y1="50.2158" x2="36.6014" y2="49.8856" width="0.2032" layer="21"/>
 <wire x1="39.92371875" y1="50.2158" x2="39.59351875" y2="49.8856" width="0.2032" layer="21"/>
 <wire x1="39.92371875" y1="50.2158" x2="39.59351875" y2="50.546" width="0.2032" layer="21"/>
-<text x="59.436" y="26.035" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">CLK</text>
-<text x="59.436" y="28.575" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">LAT</text>
-<text x="59.436" y="31.115" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">CLK</text>
-<text x="59.436" y="33.655" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">LAT</text>
+<text x="30.48" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">2CLK</text>
+<text x="27.94" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">1LAT</text>
+<text x="25.4" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">1CLK</text>
+<text x="33.02" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">2LAT</text>
+<text x="40.64" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">4CLK</text>
+<text x="38.1" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">3LAT</text>
+<text x="35.56" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">3CLK</text>
+<text x="43.18" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">4LAT</text>
+<text x="4.699" y="35.814" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D0</text>
+<text x="4.699" y="30.734" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D1</text>
+<text x="4.699" y="25.654" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D0</text>
+<text x="4.699" y="20.574" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D1</text>
+<text x="58.039" y="28.194" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D1</text>
+<text x="58.039" y="23.114" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D0</text>
 </plain>
 <libraries>
 <library name="TASLink">
@@ -1633,9 +1641,7 @@ Please make sure your boards conform to these design rules.</description>
 </pass>
 </autorouter>
 <elements>
-<element name="U1" library="TASLink" package="DIL20" value="74245" x="36.83" y="31.369" smashed="yes" rot="R180">
-<attribute name="NAME" x="49.911" y="35.052" size="1.27" layer="25" font="vector" ratio="16" rot="R270"/>
-</element>
+<element name="U1" library="TASLink" package="DIL20" value="74245" x="36.83" y="31.369" smashed="yes" rot="R180"/>
 <element name="JP2" library="SparkFun-Connectors" package="1X04" value="" x="64.77" y="40.894" smashed="yes" rot="R90">
 <attribute name="VALUE" x="67.945" y="39.624" size="1.27" layer="27" rot="R90"/>
 </element>
@@ -1646,18 +1652,10 @@ Please make sure your boards conform to these design rules.</description>
 <element name="R2" library="rcl" package="0207/2V" value="3.6k" x="22.9616" y="16.129" smashed="yes" rot="R90"/>
 <element name="R3" library="rcl" package="0207/2V" value="3.6k" x="10.2616" y="16.129" smashed="yes" rot="R90"/>
 <element name="R4" library="rcl" package="0207/2V" value="3.6k" x="25.6286" y="16.129" smashed="yes" rot="R90"/>
-<element name="U2" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="17.1196" y="15.367" smashed="yes">
-<attribute name="NAME" x="19.0246" y="13.462" size="1.27" layer="21" font="vector" ratio="16"/>
-</element>
-<element name="U4" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="35.7886" y="15.367" smashed="yes">
-<attribute name="NAME" x="37.6936" y="13.462" size="1.27" layer="21" font="vector" ratio="16"/>
-</element>
-<element name="U3" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="13.65" y="15.367" smashed="yes">
-<attribute name="NAME" x="9.84" y="13.462" size="1.27" layer="21" font="vector" ratio="16"/>
-</element>
-<element name="U5" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="32.3596" y="15.367" smashed="yes">
-<attribute name="NAME" x="28.5496" y="13.462" size="1.27" layer="21" font="vector" ratio="16"/>
-</element>
+<element name="U2" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="17.1196" y="15.367" smashed="yes"/>
+<element name="U4" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="35.7886" y="15.367" smashed="yes"/>
+<element name="U3" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="13.65" y="15.367" smashed="yes"/>
+<element name="U5" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="32.3596" y="15.367" smashed="yes"/>
 <element name="JP4" library="SparkFun-Connectors" package="1X04" value="" x="64.77" y="30.734" smashed="yes" rot="R90">
 <attribute name="VALUE" x="67.945" y="29.464" size="1.27" layer="27" rot="R90"/>
 </element>
@@ -1670,33 +1668,61 @@ Please make sure your boards conform to these design rules.</description>
 <element name="JP10" library="SparkFun-Connectors" package="1X04" value="" x="67.31" y="51.054" smashed="yes" rot="R90">
 <attribute name="VALUE" x="70.485" y="49.784" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="U7" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="51.5366" y="15.367"/>
-<element name="U8" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="64.3636" y="15.367"/>
-<element name="U9" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="48.1076" y="15.367"/>
-<element name="U10" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="60.894" y="15.367"/>
-<element name="R5" library="rcl" package="0207/2V" value="3.6k" x="38.7096" y="16.129" rot="R90"/>
-<element name="R6" library="rcl" package="0207/2V" value="3.6k" x="54.8386" y="16.129" rot="R90"/>
-<element name="R11" library="rcl" package="0207/2V" value="3.6k" x="41.3766" y="16.129" rot="R90"/>
-<element name="R12" library="rcl" package="0207/2V" value="3.6k" x="57.5056" y="16.129" rot="R90"/>
-<element name="J5" library="TASLink" package="RJ45" value="RJ45" x="10.16" y="66.802" rot="R180"/>
-<element name="JP17" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="40.894" rot="R90"/>
-<element name="JP19" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="51.054" rot="R90"/>
-<element name="JP16" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="51.054" rot="R90"/>
-<element name="JP18" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="40.894" rot="R90"/>
-<element name="J6" library="TASLink" package="RJ45" value="RJ45" x="27.94" y="66.802" rot="R180"/>
-<element name="J7" library="TASLink" package="RJ45" value="RJ45" x="45.72" y="66.802" rot="R180"/>
-<element name="J8" library="TASLink" package="RJ45" value="RJ45" x="63.5" y="66.802" rot="R180"/>
-<element name="JP6" library="SparkFun-Connectors" package="1X08" value="" x="43.18" y="24.13" rot="R180"/>
-<element name="JP5" library="SparkFun-Connectors" package="1X08" value="" x="8.89" y="20.574" rot="R90"/>
-<element name="JP8" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="20.574" rot="R90"/>
-<element name="JP11" library="SparkFun-Connectors" package="1X04" value="" x="64.77" y="20.574" rot="R90"/>
-<element name="JP12" library="SparkFun-Connectors" package="1X04" value="" x="59.69" y="51.054" rot="R90"/>
-<element name="J9" library="TASLink" package="RJ45-S-4" value="RJ45-S-4" x="36.83" y="2.921"/>
-<element name="JP1" library="SparkFun-Connectors" package="1X04" value="" x="6.35" y="51.054" rot="R90"/>
-<element name="JP13" library="SparkFun-Connectors" package="1X04" value="" x="11.43" y="40.894" rot="R90"/>
-<element name="JP14" library="SparkFun-Connectors" package="1X08" value="" x="6.35" y="20.574" rot="R90"/>
-<element name="JP15" library="SparkFun-Connectors" package="1X04" value="" x="59.69" y="20.574" rot="R90"/>
-<element name="JP20" library="SparkFun-Connectors" package="1X04" value="" x="67.31" y="20.574" rot="R90"/>
+<element name="U7" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="51.5366" y="15.367" smashed="yes"/>
+<element name="U8" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="64.3636" y="15.367" smashed="yes"/>
+<element name="U9" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="48.1076" y="15.367" smashed="yes"/>
+<element name="U10" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="60.894" y="15.367" smashed="yes"/>
+<element name="R5" library="rcl" package="0207/2V" value="3.6k" x="38.7096" y="16.129" smashed="yes" rot="R90"/>
+<element name="R6" library="rcl" package="0207/2V" value="3.6k" x="54.8386" y="16.129" smashed="yes" rot="R90"/>
+<element name="R11" library="rcl" package="0207/2V" value="3.6k" x="41.3766" y="16.129" smashed="yes" rot="R90"/>
+<element name="R12" library="rcl" package="0207/2V" value="3.6k" x="57.5056" y="16.129" smashed="yes" rot="R90"/>
+<element name="J5" library="TASLink" package="RJ45" value="RJ45" x="10.16" y="66.802" smashed="yes" rot="R180"/>
+<element name="JP17" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="40.894" smashed="yes" rot="R90">
+<attribute name="VALUE" x="12.065" y="39.624" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP19" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="51.054" smashed="yes" rot="R90">
+<attribute name="VALUE" x="12.065" y="49.784" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP16" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="51.054" smashed="yes" rot="R90">
+<attribute name="VALUE" x="65.405" y="49.784" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP18" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="40.894" smashed="yes" rot="R90">
+<attribute name="VALUE" x="65.405" y="39.624" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="J6" library="TASLink" package="RJ45" value="RJ45" x="27.94" y="66.802" smashed="yes" rot="R180"/>
+<element name="J7" library="TASLink" package="RJ45" value="RJ45" x="45.72" y="66.802" smashed="yes" rot="R180"/>
+<element name="J8" library="TASLink" package="RJ45" value="RJ45" x="63.5" y="66.802" smashed="yes" rot="R180"/>
+<element name="JP6" library="SparkFun-Connectors" package="1X08" value="" x="43.18" y="24.13" smashed="yes" rot="R180">
+<attribute name="VALUE" x="44.45" y="27.305" size="1.27" layer="27" rot="R180"/>
+</element>
+<element name="JP5" library="SparkFun-Connectors" package="1X08" value="" x="8.89" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="12.065" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP8" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="65.405" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP11" library="SparkFun-Connectors" package="1X04" value="" x="64.77" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="67.945" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP12" library="SparkFun-Connectors" package="1X04" value="" x="59.69" y="51.054" smashed="yes" rot="R90">
+<attribute name="VALUE" x="62.865" y="49.784" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="J9" library="TASLink" package="RJ45-S-4" value="RJ45-S-4" x="36.83" y="2.921" smashed="yes"/>
+<element name="JP1" library="SparkFun-Connectors" package="1X04" value="" x="6.35" y="51.054" smashed="yes" rot="R90">
+<attribute name="VALUE" x="9.525" y="49.784" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP13" library="SparkFun-Connectors" package="1X04" value="" x="11.43" y="40.894" smashed="yes" rot="R90">
+<attribute name="VALUE" x="14.605" y="39.624" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP14" library="SparkFun-Connectors" package="1X08" value="" x="6.35" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="9.525" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP15" library="SparkFun-Connectors" package="1X04" value="" x="59.69" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="62.865" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="JP20" library="SparkFun-Connectors" package="1X04" value="" x="67.31" y="20.574" smashed="yes" rot="R90">
+<attribute name="VALUE" x="70.485" y="19.304" size="1.27" layer="27" rot="R90"/>
+</element>
 </elements>
 <signals>
 <signal name="+3V3">
@@ -1718,15 +1744,15 @@ Please make sure your boards conform to these design rules.</description>
 <via x="50.3936" y="64.135" extent="1-16" drill="0.3556"/>
 <wire x1="50.3936" y1="64.135" x2="59.182" y2="64.135" width="0.4064" layer="1"/>
 <wire x1="59.182" y1="64.135" x2="60.96" y2="65.913" width="0.4064" layer="1"/>
-<wire x1="56.515" y1="61.468" x2="60.96" y2="65.913" width="0.4064" layer="16"/>
+<wire x1="57.277" y1="62.23" x2="60.96" y2="65.913" width="0.4064" layer="16"/>
 <wire x1="44.958" y1="64.135" x2="43.18" y2="65.913" width="0.4064" layer="16"/>
 <wire x1="27.178" y1="64.135" x2="25.4" y2="65.913" width="0.4064" layer="16"/>
 <wire x1="9.398" y1="64.135" x2="7.62" y2="65.913" width="0.4064" layer="16"/>
-<wire x1="56.515" y1="61.468" x2="56.515" y2="59.309" width="0.4064" layer="16"/>
-<wire x1="56.515" y1="59.309" x2="59.69" y2="56.134" width="0.4064" layer="16"/>
-<wire x1="59.69" y1="56.134" x2="56.515" y2="52.959" width="0.4064" layer="16"/>
-<wire x1="48.26" y1="27.559" x2="56.515" y2="35.814" width="0.4064" layer="16"/>
-<wire x1="56.515" y1="35.814" x2="56.515" y2="52.959" width="0.4064" layer="16"/>
+<wire x1="57.277" y1="62.23" x2="57.277" y2="58.547" width="0.4064" layer="16"/>
+<wire x1="57.277" y1="58.547" x2="59.69" y2="56.134" width="0.4064" layer="16"/>
+<wire x1="59.69" y1="56.134" x2="57.277" y2="53.721" width="0.4064" layer="16"/>
+<wire x1="48.26" y1="27.559" x2="57.277" y2="36.576" width="0.4064" layer="16"/>
+<wire x1="57.277" y1="36.576" x2="57.277" y2="53.721" width="0.4064" layer="16"/>
 </signal>
 <signal name="GND">
 <contactref element="U1" pad="19"/>
@@ -1868,8 +1894,9 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="25.6286" y1="17.399" x2="27.051" y2="15.9766" width="0.2032" layer="16"/>
 <wire x1="27.432" y1="7.239" x2="27.051" y2="7.62" width="0.2032" layer="16"/>
 <wire x1="27.051" y1="7.62" x2="27.051" y2="15.9766" width="0.2032" layer="16"/>
-<wire x1="25.6286" y1="17.399" x2="26.289" y2="17.399" width="0.2032" layer="16"/>
-<wire x1="26.289" y1="17.399" x2="33.02" y2="24.13" width="0.2032" layer="16"/>
+<wire x1="25.6286" y1="17.399" x2="26.7716" y2="18.542" width="0.2032" layer="16"/>
+<wire x1="26.7716" y1="18.542" x2="27.432" y2="18.542" width="0.2032" layer="16"/>
+<wire x1="27.432" y1="18.542" x2="33.02" y2="24.13" width="0.2032" layer="16"/>
 </signal>
 <signal name="CP2_CLOCK">
 <contactref element="U1" pad="13"/>
@@ -1880,8 +1907,9 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="24.2951" y1="16.0655" x2="22.9616" y2="17.399" width="0.2032" layer="16"/>
 <wire x1="25.4" y1="7.239" x2="24.2951" y2="8.3439" width="0.2032" layer="16"/>
 <wire x1="24.2951" y1="8.3439" x2="24.2951" y2="16.0655" width="0.2032" layer="16"/>
-<wire x1="22.9616" y1="17.399" x2="23.749" y2="17.399" width="0.2032" layer="16"/>
-<wire x1="23.749" y1="17.399" x2="30.48" y2="24.13" width="0.2032" layer="16"/>
+<wire x1="22.9616" y1="17.399" x2="24.6126" y2="19.05" width="0.2032" layer="16"/>
+<wire x1="24.6126" y1="19.05" x2="25.4" y2="19.05" width="0.2032" layer="16"/>
+<wire x1="25.4" y1="19.05" x2="30.48" y2="24.13" width="0.2032" layer="16"/>
 </signal>
 <signal name="CP1_CLOCK_LV">
 <contactref element="U1" pad="9"/>
@@ -2178,8 +2206,9 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="56.1721" y1="16.0655" x2="54.8386" y2="17.399" width="0.2032" layer="16"/>
 <wire x1="56.896" y1="7.239" x2="56.1721" y2="7.9629" width="0.2032" layer="16"/>
 <wire x1="54.8386" y1="17.399" x2="53.1876" y2="19.05" width="0.2032" layer="16"/>
-<wire x1="53.1876" y1="19.05" x2="45.72" y2="19.05" width="0.2032" layer="16"/>
-<wire x1="45.72" y1="19.05" x2="40.64" y2="24.13" width="0.2032" layer="16"/>
+<wire x1="53.1876" y1="19.05" x2="43.815" y2="19.05" width="0.2032" layer="16"/>
+<wire x1="43.815" y1="19.05" x2="40.64" y2="22.225" width="0.2032" layer="16"/>
+<wire x1="40.64" y1="22.225" x2="40.64" y2="24.13" width="0.2032" layer="16"/>
 </signal>
 <signal name="CP3_CLOCK_LV">
 <contactref element="U1" pad="5"/>

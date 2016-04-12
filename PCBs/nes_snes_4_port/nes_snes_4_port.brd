@@ -164,7 +164,7 @@
 <wire x1="36.00576875" y1="47.498" x2="34.479228125" y2="47.498" width="0.508" layer="21"/>
 <wire x1="34.479228125" y1="47.498" x2="33.717228125" y2="48.26" width="0.508" layer="21"/>
 <wire x1="38.986459375" y1="49.151540625" x2="38.160959375" y2="48.326040625" width="0.508" layer="21"/>
-<text x="36.83" y="43.053" size="1.778" layer="21" font="vector" ratio="16" align="bottom-center">4-port NES/SNES</text>
+<text x="36.83" y="43.053" size="1.778" layer="21" font="vector" ratio="16" align="bottom-center">4-port NES/SNES v1</text>
 </plain>
 <libraries>
 <library name="TASLink">

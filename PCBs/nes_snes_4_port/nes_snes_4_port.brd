@@ -1789,13 +1789,13 @@ Please make sure your boards conform to these design rules.</description>
 <attribute name="NAME" x="55.6006" y="18.2372" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
 </element>
 <element name="R11" library="rcl" package="0207/2V" value="3.6k" x="42.0116" y="16.129" smashed="yes" rot="R90">
-<attribute name="NAME" x="44.0436" y="15.9512" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+<attribute name="NAME" x="44.6786" y="14.9352" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
 </element>
 <element name="R12" library="rcl" package="0207/2V" value="3.6k" x="57.7596" y="16.129" smashed="yes" rot="R90">
 <attribute name="NAME" x="56.9976" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
 </element>
 <element name="J5" library="TASLink" package="RJ45" value="RJ45" x="10.16" y="66.802" smashed="yes" rot="R180">
-<attribute name="NAME" x="17.653" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+<attribute name="NAME" x="4.445" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
 </element>
 <element name="JP17" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="40.894" smashed="yes" rot="R90">
 <attribute name="VALUE" x="12.065" y="39.624" size="1.27" layer="27" rot="R90"/>
@@ -1810,10 +1810,10 @@ Please make sure your boards conform to these design rules.</description>
 <attribute name="VALUE" x="65.405" y="39.624" size="1.27" layer="27" rot="R90"/>
 </element>
 <element name="J6" library="TASLink" package="RJ45" value="RJ45" x="27.94" y="66.802" smashed="yes" rot="R180">
-<attribute name="NAME" x="35.433" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+<attribute name="NAME" x="22.225" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
 </element>
 <element name="J7" library="TASLink" package="RJ45" value="RJ45" x="45.72" y="66.802" smashed="yes" rot="R180">
-<attribute name="NAME" x="53.213" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+<attribute name="NAME" x="40.005" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
 </element>
 <element name="J8" library="TASLink" package="RJ45" value="RJ45" x="63.5" y="66.802" smashed="yes" rot="R180">
 <attribute name="NAME" x="57.785" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>

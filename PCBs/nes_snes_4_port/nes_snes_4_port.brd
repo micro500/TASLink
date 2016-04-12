@@ -22,8 +22,8 @@
 <layer number="26" name="bNames" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="27" name="tValues" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="28" name="bValues" color="7" fill="1" visible="yes" active="yes"/>
-<layer number="29" name="tStop" color="7" fill="3" visible="no" active="yes"/>
-<layer number="30" name="bStop" color="7" fill="6" visible="no" active="yes"/>
+<layer number="29" name="tStop" color="7" fill="3" visible="yes" active="yes"/>
+<layer number="30" name="bStop" color="7" fill="6" visible="yes" active="yes"/>
 <layer number="31" name="tCream" color="7" fill="4" visible="no" active="yes"/>
 <layer number="32" name="bCream" color="7" fill="5" visible="no" active="yes"/>
 <layer number="33" name="tFinish" color="6" fill="3" visible="no" active="yes"/>
@@ -109,46 +109,46 @@
 <wire x1="73.3044" y1="0" x2="73.3044" y2="73.152" width="0" layer="20"/>
 <wire x1="73.3044" y1="73.152" x2="0.3556" y2="73.152" width="0" layer="20"/>
 <wire x1="0.3556" y1="73.152" x2="0.3556" y2="0" width="0" layer="20"/>
-<text x="70.485" y="43.434" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">1</text>
-<text x="70.485" y="45.974" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">2</text>
-<text x="70.485" y="48.514" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">3</text>
-<text x="70.485" y="51.054" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">4</text>
-<text x="70.485" y="53.594" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">5</text>
-<text x="70.485" y="56.134" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">6</text>
-<text x="70.485" y="58.674" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">7</text>
-<text x="70.485" y="40.894" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">0</text>
-<text x="72.39" y="49.784" size="1.27" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">DEBUG</text>
-<wire x1="71.755" y1="53.594" x2="71.755" y2="59.944" width="0.254" layer="21"/>
-<wire x1="71.755" y1="45.974" x2="71.755" y2="39.624" width="0.254" layer="21"/>
-<text x="68.961" y="20.574" size="1.27" layer="21" font="vector" ratio="16" align="center-left">4D1</text>
-<text x="68.961" y="25.654" size="1.27" layer="21" font="vector" ratio="16" align="center-left">4D0</text>
-<wire x1="31.777940625" y1="49.8856" x2="31.777940625" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="31.777940625" y1="51.716940625" x2="31.168340625" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="31.777940625" y1="51.716940625" x2="32.387540625" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="32.751778125" y1="49.8856" x2="32.751778125" y2="50.8" width="0.2032" layer="21"/>
-<wire x1="32.751778125" y1="50.8" x2="33.970978125" y2="50.8" width="0.2032" layer="21"/>
-<wire x1="33.970978125" y1="50.8" x2="33.970978125" y2="51.1048" width="0.2032" layer="21"/>
-<wire x1="33.970978125" y1="51.1048" x2="33.361378125" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="33.361378125" y1="51.716940625" x2="32.751778125" y2="51.1048" width="0.2032" layer="21"/>
-<wire x1="32.751778125" y1="51.1048" x2="32.751778125" y2="50.8" width="0.2032" layer="21"/>
-<wire x1="33.970978125" y1="50.8" x2="33.970978125" y2="49.8856" width="0.2032" layer="21"/>
-<wire x1="35.7124" y1="51.412140625" x2="35.4076" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="35.4076" y1="51.716940625" x2="34.798" y2="51.716940625" width="0.2032" layer="21"/>
-<wire x1="34.798" y1="51.716940625" x2="34.4932" y2="51.412140625" width="0.2032" layer="21"/>
-<wire x1="34.4932" y1="51.412140625" x2="34.4932" y2="51.1048" width="0.2032" layer="21"/>
-<wire x1="34.4932" y1="51.1048" x2="34.798" y2="50.8" width="0.2032" layer="21"/>
-<wire x1="34.798" y1="50.8" x2="35.4076" y2="50.8" width="0.2032" layer="21"/>
-<wire x1="35.4076" y1="50.8" x2="35.7124" y2="50.4952" width="0.2032" layer="21"/>
-<wire x1="35.7124" y1="50.4952" x2="35.7124" y2="50.1904" width="0.2032" layer="21"/>
-<wire x1="35.7124" y1="50.1904" x2="35.4076" y2="49.8856" width="0.2032" layer="21"/>
-<wire x1="35.4076" y1="49.8856" x2="34.798" y2="49.8856" width="0.2032" layer="21"/>
-<wire x1="34.798" y1="49.8856" x2="34.4932" y2="50.1904" width="0.2032" layer="21"/>
-<text x="36.1696" y="51.435" size="1.27" layer="21" font="vector" ratio="16" align="center-left">Link</text>
-<wire x1="36.2712" y1="50.2158" x2="39.92371875" y2="50.2158" width="0.2032" layer="21"/>
-<wire x1="36.2712" y1="50.2158" x2="36.6014" y2="50.546" width="0.2032" layer="21"/>
-<wire x1="36.2712" y1="50.2158" x2="36.6014" y2="49.8856" width="0.2032" layer="21"/>
-<wire x1="39.92371875" y1="50.2158" x2="39.59351875" y2="49.8856" width="0.2032" layer="21"/>
-<wire x1="39.92371875" y1="50.2158" x2="39.59351875" y2="50.546" width="0.2032" layer="21"/>
+<text x="70.231" y="43.434" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">1</text>
+<text x="70.231" y="45.974" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">2</text>
+<text x="70.231" y="48.514" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">3</text>
+<text x="70.231" y="51.054" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">4</text>
+<text x="70.231" y="53.594" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">5</text>
+<text x="70.231" y="56.134" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">6</text>
+<text x="70.231" y="58.674" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">7</text>
+<text x="70.231" y="40.894" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">0</text>
+<text x="72.136" y="49.784" size="1.016" layer="21" font="vector" ratio="16" rot="R90" align="bottom-center">DEBUG</text>
+<wire x1="71.501" y1="53.594" x2="71.501" y2="59.944" width="0.254" layer="21"/>
+<wire x1="71.501" y1="45.974" x2="71.501" y2="39.624" width="0.254" layer="21"/>
+<text x="68.961" y="20.574" size="1.016" layer="21" font="vector" ratio="16" align="center-left">4D1</text>
+<text x="68.961" y="25.654" size="1.016" layer="21" font="vector" ratio="16" align="center-left">4D0</text>
+<wire x1="33.047940625" y1="48.6156" x2="33.047940625" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="33.047940625" y1="50.446940625" x2="32.438340625" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="33.047940625" y1="50.446940625" x2="33.657540625" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="34.021778125" y1="48.6156" x2="34.021778125" y2="49.53" width="0.2032" layer="21"/>
+<wire x1="34.021778125" y1="49.53" x2="35.240978125" y2="49.53" width="0.2032" layer="21"/>
+<wire x1="35.240978125" y1="49.53" x2="35.240978125" y2="49.8348" width="0.2032" layer="21"/>
+<wire x1="35.240978125" y1="49.8348" x2="34.631378125" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="34.631378125" y1="50.446940625" x2="34.021778125" y2="49.8348" width="0.2032" layer="21"/>
+<wire x1="34.021778125" y1="49.8348" x2="34.021778125" y2="49.53" width="0.2032" layer="21"/>
+<wire x1="35.240978125" y1="49.53" x2="35.240978125" y2="48.6156" width="0.2032" layer="21"/>
+<wire x1="36.9824" y1="50.142140625" x2="36.6776" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="36.6776" y1="50.446940625" x2="36.068" y2="50.446940625" width="0.2032" layer="21"/>
+<wire x1="36.068" y1="50.446940625" x2="35.7632" y2="50.142140625" width="0.2032" layer="21"/>
+<wire x1="35.7632" y1="50.142140625" x2="35.7632" y2="49.8348" width="0.2032" layer="21"/>
+<wire x1="35.7632" y1="49.8348" x2="36.068" y2="49.53" width="0.2032" layer="21"/>
+<wire x1="36.068" y1="49.53" x2="36.6776" y2="49.53" width="0.2032" layer="21"/>
+<wire x1="36.6776" y1="49.53" x2="36.9824" y2="49.2252" width="0.2032" layer="21"/>
+<wire x1="36.9824" y1="49.2252" x2="36.9824" y2="48.9204" width="0.2032" layer="21"/>
+<wire x1="36.9824" y1="48.9204" x2="36.6776" y2="48.6156" width="0.2032" layer="21"/>
+<wire x1="36.6776" y1="48.6156" x2="36.068" y2="48.6156" width="0.2032" layer="21"/>
+<wire x1="36.068" y1="48.6156" x2="35.7632" y2="48.9204" width="0.2032" layer="21"/>
+<text x="37.4396" y="50.165" size="1.27" layer="21" font="vector" ratio="16" align="center-left">Link</text>
+<wire x1="37.5412" y1="48.9458" x2="41.19371875" y2="48.9458" width="0.2032" layer="21"/>
+<wire x1="37.5412" y1="48.9458" x2="37.8714" y2="49.276" width="0.2032" layer="21"/>
+<wire x1="37.5412" y1="48.9458" x2="37.8714" y2="48.6156" width="0.2032" layer="21"/>
+<wire x1="41.19371875" y1="48.9458" x2="40.86351875" y2="48.6156" width="0.2032" layer="21"/>
+<wire x1="41.19371875" y1="48.9458" x2="40.86351875" y2="49.276" width="0.2032" layer="21"/>
 <text x="30.48" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">2CLK</text>
 <text x="27.94" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">1LAT</text>
 <text x="25.4" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">1CLK</text>
@@ -157,12 +157,12 @@
 <text x="38.1" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">3LAT</text>
 <text x="35.56" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">3CLK</text>
 <text x="43.18" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">4LAT</text>
-<text x="4.699" y="35.814" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D0</text>
-<text x="4.699" y="30.734" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D1</text>
-<text x="4.699" y="25.654" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D0</text>
-<text x="4.699" y="20.574" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D1</text>
-<text x="58.039" y="28.194" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D1</text>
-<text x="58.039" y="23.114" size="1.27" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D0</text>
+<text x="4.699" y="35.814" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D0</text>
+<text x="4.699" y="30.734" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">2D1</text>
+<text x="4.699" y="25.654" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D0</text>
+<text x="4.699" y="20.574" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">1D1</text>
+<text x="58.039" y="28.194" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D1</text>
+<text x="58.039" y="23.114" size="1.016" layer="21" font="vector" ratio="16" rot="R180" align="center-left">3D0</text>
 <text x="45.72" y="22.479" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center-left">GND</text>
 </plain>
 <libraries>
@@ -1611,7 +1611,7 @@ Please make sure your boards conform to these design rules.</description>
 <param name="mlMaxStopFrame" value="3mil"/>
 <param name="mlMinCreamFrame" value="0mil"/>
 <param name="mlMaxCreamFrame" value="0mil"/>
-<param name="mlViaStopLimit" value="0mil"/>
+<param name="mlViaStopLimit" value="15mil"/>
 <param name="srRoundness" value="0"/>
 <param name="srMinRoundness" value="0mil"/>
 <param name="srMaxRoundness" value="0mil"/>
@@ -1720,30 +1720,66 @@ Please make sure your boards conform to these design rules.</description>
 </pass>
 </autorouter>
 <elements>
-<element name="U1" library="TASLink" package="DIL20" value="74245" x="36.83" y="31.369" smashed="yes" rot="R180"/>
-<element name="R1" library="rcl" package="0207/2V" value="3.6k" x="7.5946" y="16.129" smashed="yes" rot="R90"/>
-<element name="R2" library="rcl" package="0207/2V" value="3.6k" x="22.9616" y="16.129" smashed="yes" rot="R90"/>
-<element name="R3" library="rcl" package="0207/2V" value="3.6k" x="10.2616" y="16.129" smashed="yes" rot="R90"/>
-<element name="R4" library="rcl" package="0207/2V" value="3.6k" x="25.6286" y="16.129" smashed="yes" rot="R90"/>
-<element name="U2" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="17.1196" y="15.367" smashed="yes"/>
-<element name="U4" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="35.7886" y="15.367" smashed="yes"/>
-<element name="U3" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="13.65" y="15.367" smashed="yes"/>
-<element name="U5" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="32.3596" y="15.367" smashed="yes"/>
+<element name="U1" library="TASLink" package="DIL20" value="74245" x="36.83" y="31.369" smashed="yes" rot="R180">
+<attribute name="NAME" x="22.733" y="34.544" size="1.016" layer="25" font="vector" ratio="16" rot="R270"/>
+</element>
+<element name="R1" library="rcl" package="0207/2V" value="3.6k" x="7.5946" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="6.5786" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R2" library="rcl" package="0207/2V" value="3.6k" x="22.9616" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="22.0726" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R3" library="rcl" package="0207/2V" value="3.6k" x="10.2616" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="9.4996" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R4" library="rcl" package="0207/2V" value="3.6k" x="25.6286" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="24.8666" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="U2" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="17.1196" y="15.367" smashed="yes">
+<attribute name="NAME" x="16.7386" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U4" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="35.7886" y="15.367" smashed="yes">
+<attribute name="NAME" x="35.4076" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U3" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="13.65" y="15.367" smashed="yes">
+<attribute name="NAME" x="13.269" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U5" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="32.3596" y="15.367" smashed="yes">
+<attribute name="NAME" x="31.9786" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
 <element name="JP4" library="SparkFun-Connectors" package="1X04" value="" x="64.77" y="30.734" smashed="yes" rot="R90">
 <attribute name="VALUE" x="67.945" y="29.464" size="1.27" layer="27" rot="R90"/>
 </element>
 <element name="JP7" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="30.734" smashed="yes" rot="R90">
 <attribute name="VALUE" x="65.405" y="29.464" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="U7" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="51.5366" y="15.367" smashed="yes"/>
-<element name="U8" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="64.3636" y="15.367" smashed="yes"/>
-<element name="U9" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="48.1076" y="15.367" smashed="yes"/>
-<element name="U10" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="60.894" y="15.367" smashed="yes"/>
-<element name="R5" library="rcl" package="0207/2V" value="3.6k" x="38.7096" y="16.129" smashed="yes" rot="R90"/>
-<element name="R6" library="rcl" package="0207/2V" value="3.6k" x="54.8386" y="16.129" smashed="yes" rot="R90"/>
-<element name="R11" library="rcl" package="0207/2V" value="3.6k" x="41.3766" y="16.129" smashed="yes" rot="R90"/>
-<element name="R12" library="rcl" package="0207/2V" value="3.6k" x="57.5056" y="16.129" smashed="yes" rot="R90"/>
-<element name="J5" library="TASLink" package="RJ45" value="RJ45" x="10.16" y="66.802" smashed="yes" rot="R180"/>
+<element name="U7" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="51.5366" y="15.367" smashed="yes">
+<attribute name="NAME" x="51.1556" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U8" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="64.3636" y="15.367" smashed="yes">
+<attribute name="NAME" x="63.9826" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U9" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="48.1076" y="15.367" smashed="yes">
+<attribute name="NAME" x="47.7266" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="U10" library="TASLink" package="TSOP-5" value="MC74VHC1GT125" x="60.894" y="15.367" smashed="yes">
+<attribute name="NAME" x="59.624" y="17.272" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
+<element name="R5" library="rcl" package="0207/2V" value="3.6k" x="38.7096" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="40.6146" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R6" library="rcl" package="0207/2V" value="3.6k" x="54.8386" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="54.0766" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R11" library="rcl" package="0207/2V" value="3.6k" x="41.3766" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="43.4086" y="15.9512" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="R12" library="rcl" package="0207/2V" value="3.6k" x="57.5056" y="16.129" smashed="yes" rot="R90">
+<attribute name="NAME" x="56.7436" y="16.3322" size="1.016" layer="25" font="vector" ratio="16" rot="R90"/>
+</element>
+<element name="J5" library="TASLink" package="RJ45" value="RJ45" x="10.16" y="66.802" smashed="yes" rot="R180">
+<attribute name="NAME" x="17.653" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+</element>
 <element name="JP17" library="SparkFun-Connectors" package="1X04" value="" x="8.89" y="40.894" smashed="yes" rot="R90">
 <attribute name="VALUE" x="12.065" y="39.624" size="1.27" layer="27" rot="R90"/>
 </element>
@@ -1756,9 +1792,15 @@ Please make sure your boards conform to these design rules.</description>
 <element name="JP18" library="SparkFun-Connectors" package="1X04" value="" x="62.23" y="40.894" smashed="yes" rot="R90">
 <attribute name="VALUE" x="65.405" y="39.624" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="J6" library="TASLink" package="RJ45" value="RJ45" x="27.94" y="66.802" smashed="yes" rot="R180"/>
-<element name="J7" library="TASLink" package="RJ45" value="RJ45" x="45.72" y="66.802" smashed="yes" rot="R180"/>
-<element name="J8" library="TASLink" package="RJ45" value="RJ45" x="63.5" y="66.802" smashed="yes" rot="R180"/>
+<element name="J6" library="TASLink" package="RJ45" value="RJ45" x="27.94" y="66.802" smashed="yes" rot="R180">
+<attribute name="NAME" x="35.433" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+</element>
+<element name="J7" library="TASLink" package="RJ45" value="RJ45" x="45.72" y="66.802" smashed="yes" rot="R180">
+<attribute name="NAME" x="53.213" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+</element>
+<element name="J8" library="TASLink" package="RJ45" value="RJ45" x="63.5" y="66.802" smashed="yes" rot="R180">
+<attribute name="NAME" x="57.785" y="59.944" size="1.016" layer="21" font="vector" ratio="16" rot="R180"/>
+</element>
 <element name="JP5" library="SparkFun-Connectors" package="1X08" value="" x="8.89" y="20.574" smashed="yes" rot="R90">
 <attribute name="VALUE" x="12.065" y="19.304" size="1.27" layer="27" rot="R90"/>
 </element>
@@ -1771,7 +1813,9 @@ Please make sure your boards conform to these design rules.</description>
 <element name="JP12" library="SparkFun-Connectors" package="1X04" value="" x="59.69" y="51.054" smashed="yes" rot="R90">
 <attribute name="VALUE" x="62.865" y="49.784" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="J9" library="TASLink" package="RJ45-S-4" value="RJ45-S-4" x="36.83" y="2.921" smashed="yes"/>
+<element name="J9" library="TASLink" package="RJ45-S-4" value="RJ45-S-4" x="36.83" y="2.921" smashed="yes">
+<attribute name="NAME" x="68.961" y="0.762" size="1.016" layer="21" font="vector" ratio="16"/>
+</element>
 <element name="JP1" library="SparkFun-Connectors" package="1X04" value="" x="6.35" y="51.054" smashed="yes" rot="R90">
 <attribute name="VALUE" x="9.525" y="49.784" size="1.27" layer="27" rot="R90"/>
 </element>
@@ -1787,11 +1831,13 @@ Please make sure your boards conform to these design rules.</description>
 <element name="JP20" library="SparkFun-Connectors" package="1X04" value="" x="67.31" y="20.574" smashed="yes" rot="R90">
 <attribute name="VALUE" x="70.485" y="19.304" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="JP21" library="SparkFun-Connectors" package="1X09" value="M09" x="45.72" y="24.13" smashed="yes" rot="R180">
-<attribute name="VALUE" x="46.99" y="27.305" size="1.27" layer="27" rot="R180"/>
+<element name="JP21" library="SparkFun-Connectors" package="1X09" value="M09" x="45.72" y="24.13" smashed="yes" rot="R180"/>
+<element name="JP6" library="SparkFun-Connectors" package="1X08" value="" x="64.77" y="40.894" smashed="yes" rot="R90">
+<attribute name="VALUE" x="67.945" y="39.624" size="1.27" layer="27" rot="R90"/>
 </element>
-<element name="JP6" library="SparkFun-Connectors" package="1X08" value="" x="64.77" y="40.894" rot="R90"/>
-<element name="JP9" library="SparkFun-Connectors" package="1X08" value="" x="67.31" y="40.894" rot="R90"/>
+<element name="JP9" library="SparkFun-Connectors" package="1X08" value="" x="67.31" y="40.894" smashed="yes" rot="R90">
+<attribute name="VALUE" x="70.485" y="39.624" size="1.27" layer="27" rot="R90"/>
+</element>
 </elements>
 <signals>
 <signal name="+3V3">
@@ -2494,9 +2540,9 @@ Please make sure your boards conform to these design rules.</description>
 <signal name="VP3_CLOCK">
 <contactref element="J7" pad="8"/>
 <contactref element="JP18" pad="4"/>
-<wire x1="49.276" y1="59.182" x2="49.276" y2="65.913" width="0.2032" layer="1"/>
-<wire x1="62.23" y1="48.514" x2="59.944" y2="48.514" width="0.2032" layer="1"/>
-<wire x1="59.944" y1="48.514" x2="49.276" y2="59.182" width="0.2032" layer="1"/>
+<wire x1="49.276" y1="59.055" x2="49.276" y2="65.913" width="0.2032" layer="1"/>
+<wire x1="62.23" y1="48.514" x2="59.817" y2="48.514" width="0.2032" layer="1"/>
+<wire x1="59.817" y1="48.514" x2="49.276" y2="59.055" width="0.2032" layer="1"/>
 </signal>
 <signal name="VP4_D2">
 <contactref element="J8" pad="3"/>
@@ -2540,6 +2586,108 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="67.056" y1="64.6684" x2="67.056" y2="65.913" width="0.2032" layer="1"/>
 </signal>
 </signals>
+<errors>
+<approved hash="18,29,002ff419846470d5"/>
+<approved hash="18,29,c707e2247a466286"/>
+<approved hash="18,29,719f57b382cf71f7"/>
+<approved hash="18,29,16cc3093facfb3a4"/>
+<approved hash="18,29,f5bf24c97fc8dddb"/>
+<approved hash="18,29,fe2423fe77772e80"/>
+<approved hash="18,29,6970b4aae3832e80"/>
+<approved hash="18,29,60cb8fe5d4e4dddb"/>
+<approved hash="18,29,60f273dd7a797780"/>
+<approved hash="18,29,69481ec94d1fd280"/>
+<approved hash="18,29,f586d8f1d1557780"/>
+<approved hash="18,29,fe1c899dd9ebd280"/>
+<approved hash="18,29,c42f6b11301044db"/>
+<approved hash="18,29,f5835df506f444db"/>
+<approved hash="18,29,fe18bac20e4b5780"/>
+<approved hash="18,29,cc84885e39f75780"/>
+<approved hash="18,29,694c2d969abf5780"/>
+<approved hash="18,29,60f7f6d9add844db"/>
+<approved hash="18,29,cc93120c47447b80"/>
+<approved hash="18,29,c43947184ea2de80"/>
+<approved hash="18,29,695bb7c4e40c7b80"/>
+<approved hash="18,29,60e1dad0d36ade80"/>
+<approved hash="18,29,fe0f209070f87b80"/>
+<approved hash="18,29,f59571fc7846de80"/>
+<approved hash="18,29,cc97674a92e3fc80"/>
+<approved hash="18,29,c43bc0059b03abdb"/>
+<approved hash="18,29,c435dc0c31ae4580"/>
+<approved hash="18,29,cc9f89183848e080"/>
+<approved hash="18,29,daed7e520e2faa17"/>
+<approved hash="18,29,91472371530ce1bd"/>
+<approved hash="18,29,7b99447e43d59837"/>
+<approved hash="18,29,35917282c829ef36"/>
+<approved hash="18,29,d7996496f132a636"/>
+<approved hash="18,29,d5a576993e32fd36"/>
+<approved hash="18,29,2b8584ada7063436"/>
+<approved hash="18,29,7d957ab1ac1b8b37"/>
+<approved hash="18,29,2f9574c4d56fd236"/>
+<approved hash="18,29,dd8566c8f260a936"/>
+<approved hash="18,29,eba174db3b70e036"/>
+<approved hash="18,29,359982efa0443736"/>
+<approved hash="18,29,9e2df071139c99c5"/>
+<approved hash="18,29,a82cbe8d646012cd"/>
+<approved hash="18,29,be2c5c962d742bc5"/>
+<approved hash="18,29,ac2c5e96767be4f9"/>
+<approved hash="18,29,5e2ca0a2bf4f7dd9"/>
+<approved hash="18,29,a02df6bf005376c9"/>
+<approved hash="18,29,ae2ca4cb59260fc9"/>
+<approved hash="18,29,bc2c56c4222a28d9"/>
+<approved hash="18,29,ae2c60d46b39e1fd"/>
+<approved hash="18,29,582cbee0bc0d7ac5"/>
+<approved hash="18,29,0b141dab6dd77bef"/>
+<approved hash="18,29,9e9ceaaa9ad7ee66"/>
+<approved hash="18,29,79bfed009d7d0945"/>
+<approved hash="18,29,6e2a581c28611ed0"/>
+<approved hash="18,29,ff20affa03735b80"/>
+<approved hash="18,29,f4bb50cd0bcc50db"/>
+<approved hash="18,29,687438ae97875b80"/>
+<approved hash="18,29,61cffbe1a0e050db"/>
+<approved hash="18,29,ff17159865e04f80"/>
+<approved hash="18,29,f48d44f46d5eea80"/>
+<approved hash="18,29,61f9efd8c672ea80"/>
+<approved hash="18,29,684382ccf1144f80"/>
+<approved hash="18,29,c523fd1da61bb7db"/>
+<approved hash="18,29,ff1348ce9847c080"/>
+<approved hash="18,29,f48fcbf990ffb7db"/>
+<approved hash="18,29,cd8f7a52affbc080"/>
+<approved hash="18,29,6847df9a0cb3c080"/>
+<approved hash="18,29,61fb60d53bd3b7db"/>
+<approved hash="18,29,9347aeb1f5b7b7db"/>
+<approved hash="18,29,9a2b2df6fd1fc080"/>
+<approved hash="18,29,f491ffe00a425180"/>
+<approved hash="18,29,ff0bae8c02fcf480"/>
+<approved hash="18,29,c53dc9043ca65180"/>
+<approved hash="18,29,cd979c103540f480"/>
+<approved hash="18,29,9a33cbb467a4f480"/>
+<approved hash="18,29,93599aa86f0a5180"/>
+<approved hash="18,29,685f39d89608f480"/>
+<approved hash="18,29,61e554cca16e5180"/>
+<approved hash="18,29,c53e54000f0f1edb"/>
+<approved hash="18,29,935a07ac5ca31edb"/>
+<approved hash="18,29,cd9bd34f06e66980"/>
+<approved hash="18,29,9a3f84eb54026980"/>
+<approved hash="18,29,61e6c9c892c71edb"/>
+<approved hash="18,29,68537687a5ae6980"/>
+<approved hash="18,29,6190bdc0381bb880"/>
+<approved hash="18,29,682ad0d40f7d1d80"/>
+<approved hash="18,29,c5482008a5d3b880"/>
+<approved hash="18,29,cde2751cac351d80"/>
+<approved hash="18,29,9a4622b8fed11d80"/>
+<approved hash="18,29,932c73a4f67fb880"/>
+<approved hash="18,29,619236bc6dba85db"/>
+<approved hash="18,29,cde6483bf9929680"/>
+<approved hash="18,29,c54aab74f07285db"/>
+<approved hash="18,29,682eedf35ada9680"/>
+<approved hash="18,29,682677a7a471ba80"/>
+<approved hash="18,29,619c1ab393171f80"/>
+<approved hash="18,29,c544877b0edf1f80"/>
+<approved hash="18,29,cdeed26f0739ba80"/>
+<approved hash="18,29,88f05294f2151592"/>
+<approved hash="18,29,b0e6fa598a24c01c"/>
+</errors>
 </board>
 </drawing>
 </eagle>

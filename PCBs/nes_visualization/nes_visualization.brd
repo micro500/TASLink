@@ -15,7 +15,7 @@
 <layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="yes"/>
 <layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="yes"/>
-<layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="yes"/>
+<layer number="22" name="bPlace" color="7" fill="1" visible="no" active="yes"/>
 <layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="25" name="tNames" color="7" fill="1" visible="yes" active="yes"/>
@@ -41,10 +41,10 @@
 <layer number="45" name="Holes" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="46" name="Milling" color="3" fill="1" visible="yes" active="yes"/>
 <layer number="47" name="Measures" color="7" fill="1" visible="yes" active="yes"/>
-<layer number="48" name="Document" color="7" fill="1" visible="yes" active="yes"/>
-<layer number="49" name="Reference" color="7" fill="1" visible="yes" active="yes"/>
+<layer number="48" name="Document" color="7" fill="1" visible="no" active="yes"/>
+<layer number="49" name="Reference" color="7" fill="1" visible="no" active="yes"/>
 <layer number="50" name="dxf" color="7" fill="1" visible="no" active="no"/>
-<layer number="51" name="tDocu" color="7" fill="1" visible="yes" active="yes"/>
+<layer number="51" name="tDocu" color="7" fill="1" visible="no" active="yes"/>
 <layer number="52" name="bDocu" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="53" name="tGND_GNDA" color="7" fill="9" visible="no" active="no"/>
 <layer number="54" name="bGND_GNDA" color="1" fill="9" visible="no" active="no"/>
@@ -106,7 +106,6 @@
 <board>
 <plain>
 <hole x="49.9618" y="2.413" drill="2.286"/>
-<hole x="98.0694" y="2.413" drill="2.286"/>
 <wire x1="99.822" y1="0" x2="0" y2="0" width="0" layer="20"/>
 <wire x1="0" y1="31.8262" x2="92.7862" y2="31.8262" width="0" layer="20"/>
 <wire x1="92.7862" y1="31.8262" x2="97.3582" y2="31.8262" width="0" layer="20" curve="180"/>
@@ -122,7 +121,6 @@
 <circle x="20.2692" y="8.5344" radius="2.8702" width="0" layer="49"/>
 <circle x="4.4958" y="8.5344" radius="2.8702" width="0" layer="49"/>
 <wire x1="0" y1="31.8262" x2="0" y2="0" width="0" layer="20"/>
-<wire x1="99.822" y1="31.8262" x2="99.822" y2="0" width="0" layer="20"/>
 <hole x="57.658" y="26.289" drill="3.048"/>
 <hole x="57.658" y="21.844" drill="3.048"/>
 <circle x="4.4196" y="8.5344" radius="5.2832" width="0" layer="51"/>
@@ -194,6 +192,12 @@
 <text x="43.053" y="19.558" size="1.016" layer="21" font="vector" ratio="16" align="center-right">LATCH</text>
 <text x="43.053" y="24.638" size="1.016" layer="21" font="vector" ratio="16" align="center-right">DATA</text>
 <text x="43.053" y="22.098" size="1.016" layer="21" font="vector" ratio="16" align="center-right">CLOCK</text>
+<wire x1="99.822" y1="0" x2="99.822" y2="1.27" width="0" layer="20"/>
+<wire x1="99.822" y1="1.27" x2="98.0694" y2="1.27" width="0" layer="20"/>
+<wire x1="98.0694" y1="1.27" x2="96.9264" y2="2.413" width="0" layer="20" curve="-90"/>
+<wire x1="96.9264" y1="2.413" x2="98.0694" y2="3.556" width="0" layer="20" curve="-90"/>
+<wire x1="98.0694" y1="3.556" x2="99.822" y2="3.556" width="0" layer="20"/>
+<wire x1="99.822" y1="3.556" x2="99.822" y2="31.8262" width="0" layer="20"/>
 </plain>
 <libraries>
 <library name="TASLink">

@@ -7857,7 +7857,7 @@ Standard 5-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <part name="C3" library="rcl" deviceset="C-EU" device="C0603" value=".1u">
 <attribute name="MOUSER#" value="80-C0603C104K5R"/>
 </part>
-<part name="R13" library="rcl" deviceset="R-US_" device="R0603" value="25k"/>
+<part name="R13" library="rcl" deviceset="R-US_" device="R0805" value="25k"/>
 <part name="GND16" library="supply1" deviceset="GND" device=""/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
 <part name="LED1" library="led" deviceset="LED" device="5MM"/>

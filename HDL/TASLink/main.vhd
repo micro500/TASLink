@@ -6,13 +6,13 @@ entity main is
     Port ( CLK : in std_logic;
            RX : in std_logic;
            TX : out std_logic;
-           console_latch : in  STD_LOGIC_VECTOR(1 to 2);
-           console_clock : in  STD_LOGIC_VECTOR(1 to 2);
-           console_d0 : out STD_LOGIC_VECTOR(1 to 2);
-           console_d1 : out STD_LOGIC_VECTOR(1 to 2);
-           --console_io : in STD_LOGIC_VECTOR(1 to 2);
-           console_d0_oe : out std_logic_VECTOR(1 to 2);
-           console_d1_oe : out std_logic_VECTOR(1 to 2);
+           console_latch : in  STD_LOGIC_VECTOR(1 to 4);
+           console_clock : in  STD_LOGIC_VECTOR(1 to 4);
+           console_d0 : out STD_LOGIC_VECTOR(1 to 4);
+           console_d1 : out STD_LOGIC_VECTOR(1 to 4);
+           --console_io : in STD_LOGIC_VECTOR(1 to 4);
+           console_d0_oe : out std_logic_VECTOR(1 to 4);
+           console_d1_oe : out std_logic_VECTOR(1 to 4);
            debug : out STD_LOGIC_VECTOR (7 downto 0));
 end main;
 
@@ -95,19 +95,19 @@ architecture Behavioral of main is
   end component;
 
   -- Filtered signals coming from the console
-  signal console_clock_f : std_logic_vector(1 to 2);
-  signal console_latch_f : std_logic_vector(1 to 2);
-  signal console_io_f : std_logic_vector(1 to 2);
+  signal console_clock_f : std_logic_vector(1 to 4);
+  signal console_latch_f : std_logic_vector(1 to 4);
+  signal console_io_f : std_logic_vector(1 to 4);
   
   -- Toggle signals, useful for monitoring when the FPGA detects a rising edge
-  signal console_clock_toggle : std_logic_vector(1 to 2);
-  signal console_latch_toggle : std_logic_vector(1 to 2);
-  signal console_clock_f_toggle : std_logic_vector(1 to 2);
-  signal console_latch_f_toggle : std_logic_vector(1 to 2);
+  signal console_clock_toggle : std_logic_vector(1 to 4);
+  signal console_latch_toggle : std_logic_vector(1 to 4);
+  signal console_clock_f_toggle : std_logic_vector(1 to 4);
+  signal console_latch_f_toggle : std_logic_vector(1 to 4);
   
-  signal console_clock_f_delay : std_logic_vector(1 to 2);
+  signal console_clock_f_delay : std_logic_vector(1 to 4);
   
-  signal console_clock_final : std_logic_vector(1 to 2);
+  signal console_clock_final : std_logic_vector(1 to 4);
   
   signal data_from_uart : STD_LOGIC_VECTOR (7 downto 0);
   signal uart_data_recieved : STD_LOGIC := '0';
@@ -186,7 +186,7 @@ architecture Behavioral of main is
   signal custom_command_mask : vector8(1 to 8) := (others => (others => '0'));
 
 
-  signal console_io : STD_LOGIC_VECTOR(1 to 2) := (others => '1');
+  signal console_io : STD_LOGIC_VECTOR(1 to 4) := (others => '1');
   
   signal event_signal : std_logic_vector(1 to 4) := (others => '0');
   signal event_received : std_logic_vector(1 to 4) := (others => '0');
@@ -200,7 +200,7 @@ architecture Behavioral of main is
 begin
 
   GENERATE_FILTERS:
-  for I in 1 to 2 generate
+  for I in 1 to 4 generate
     latch_filters: filter port map (signal_in => console_latch(I),
                                     clk => CLK,
                                     signal_out => console_latch_f(I));
@@ -215,7 +215,7 @@ begin
   end generate GENERATE_FILTERS;
   
   GENERATE_TOGGLES:
-  for I in 1 to 2 generate
+  for I in 1 to 4 generate
     latch_toggles: toggle port map (signal_in => console_latch(I),
                                     signal_out => console_latch_toggle(I));
                                  
@@ -230,7 +230,7 @@ begin
   end generate GENERATE_TOGGLES;
   
   GENERATE_DELAYS:
-  for I in 1 to 2 generate
+  for I in 1 to 4 generate
     clk_delay: clock_delay port map (signal_in => console_clock_f(I),
                                      signal_delayed => console_clock_f_delay(I),
                                      CLK => clk);
@@ -718,6 +718,136 @@ uart_recieve_btye: process(CLK)
     end if;
   end process;
 
+  process (clk) is
+    variable latch_q_ms_timer : integer range 0 to 127 := 0;
+    -- 0.25ms = 8000 cycles of the 32MHz clock (0.00025 * 32000000)
+    variable latch_clk_timer : integer range 0 to 7999 := 0;
+
+    variable new_buffer_read : std_logic_vector(7 downto 0) := "00000000";
+    variable event_count : integer range 0 to 255 := 0;
+    variable prev_latch : std_logic := '0';
+
+  begin
+    if (rising_edge(clk)) then
+      -- Start with no advancing
+      event_buffer_read_mask(3) <= "00000000";
+      
+      -- Start timer
+      if (console_latch_f(3) /= prev_latch) then
+        -- Rising edge of latch
+        if (console_latch_f(3) = '1') then
+          -- Check timer length, if 0
+          if (event_timer_length(3) = 0) then
+            if (event_count < 255) then
+              event_count := event_count + 1;
+              event_buffer_read_mask(3) <= event_lane_mask(3);
+              event_timer_active(3) <= '0';
+            end if;
+          else
+            event_timer_active(3) <= '1';
+            latch_clk_timer := 0;
+            latch_q_ms_timer := 0;
+          end if;
+        end if;
+        prev_latch := console_latch_f(3);
+      end if;
+      
+      -- Check/advance timer
+      if (event_timer_active(3) = '1') then
+        if (latch_clk_timer = 7999) then
+          if (latch_q_ms_timer >= event_timer_length(3)) then
+            event_count := event_count + 1;
+            event_buffer_read_mask(3) <= event_lane_mask(3);
+            event_timer_active(3) <= '0';
+          else
+            latch_q_ms_timer := latch_q_ms_timer + 1;
+            latch_clk_timer := 0;
+          end if;
+        else
+          latch_clk_timer := latch_clk_timer + 1;
+        end if;
+      end if;
+    
+      if (event_signal(3) = '1') then
+        if (event_received(3) = '1') then
+          event_signal(3) <= '0';
+        end if;
+      else
+        if (event_received(3) = '0') then
+          if (event_count > 0) then
+            event_count := event_count - 1;
+            event_signal(3) <= '1';
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  process (clk) is
+    variable latch_q_ms_timer : integer range 0 to 127 := 0;
+    -- 0.25ms = 8000 cycles of the 32MHz clock (0.00025 * 32000000)
+    variable latch_clk_timer : integer range 0 to 7999 := 0;
+
+    variable new_buffer_read : std_logic_vector(7 downto 0) := "00000000";
+    variable event_count : integer range 0 to 255 := 0;
+    variable prev_latch : std_logic := '0';
+
+  begin
+    if (rising_edge(clk)) then
+      -- Start with no advancing
+      event_buffer_read_mask(4) <= "00000000";
+      
+      -- Start timer
+      if (console_latch_f(4) /= prev_latch) then
+        -- Rising edge of latch
+        if (console_latch_f(4) = '1') then
+          -- Check timer length, if 0
+          if (event_timer_length(4) = 0) then
+            if (event_count < 255) then
+              event_count := event_count + 1;
+              event_buffer_read_mask(4) <= event_lane_mask(4);
+              event_timer_active(4) <= '0';
+            end if;
+          else
+            event_timer_active(4) <= '1';
+            latch_clk_timer := 0;
+            latch_q_ms_timer := 0;
+          end if;
+        end if;
+        prev_latch := console_latch_f(4);
+      end if;
+      
+      -- Check/advance timer
+      if (event_timer_active(4) = '1') then
+        if (latch_clk_timer = 7999) then
+          if (latch_q_ms_timer >= event_timer_length(4)) then
+            event_count := event_count + 1;
+            event_buffer_read_mask(4) <= event_lane_mask(4);
+            event_timer_active(4) <= '0';
+          else
+            latch_q_ms_timer := latch_q_ms_timer + 1;
+            latch_clk_timer := 0;
+          end if;
+        else
+          latch_clk_timer := latch_clk_timer + 1;
+        end if;
+      end if;
+    
+      if (event_signal(4) = '1') then
+        if (event_received(4) = '1') then
+          event_signal(4) <= '0';
+        end if;
+      else
+        if (event_received(4) = '0') then
+          if (event_count > 0) then
+            event_count := event_count - 1;
+            event_signal(4) <= '1';
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+
   
   buffer_read <= event_buffer_read_mask(1);
   
@@ -741,6 +871,18 @@ uart_recieve_btye: process(CLK)
         end if;
       end if;
       
+      if (event_received(3) = '1') then
+        if (event_signal(3) = '0') then
+          event_received(3) <= '0';
+        end if;
+      end if;
+      
+      if (event_received(4) = '1') then
+        if (event_signal(4) = '0') then
+          event_received(4) <= '0';
+        end if;
+      end if;
+      
       if (uart_buffer_full = '0') then
         if (event_received(1) = '0' and event_signal(1) = '1') then
           event_received(1) <= '1';
@@ -749,7 +891,15 @@ uart_recieve_btye: process(CLK)
         elsif (event_received(2) = '0' and event_signal(2) = '1') then
           event_received(2) <= '1';
           uart_write <= '1';
-          data_to_uart <= x"67"; -- "f"
+          data_to_uart <= x"67"; -- "g"
+        elsif (event_received(3) = '0' and event_signal(3) = '1') then
+          event_received(3) <= '1';
+          uart_write <= '1';
+          data_to_uart <= x"68"; -- "h"
+        elsif (event_received(4) = '0' and event_signal(4) = '1') then
+          event_received(4) <= '1';
+          uart_write <= '1';
+          data_to_uart <= x"69"; -- "i"
         end if;
       end if;
     end if;
@@ -795,6 +945,11 @@ uart_recieve_btye: process(CLK)
                    multitap_d1(2)   when port_config(2) = multitap_2p else
                    multitap_d1(2)   when port_config(2) = multitap_5p else
                    '1';
+                   
+  console_d0(3) <= '1';
+  console_d1(3) <= '1';
+  console_d0(4) <= '1';
+  console_d1(4) <= '1';
   
   
   console_d0_oe(1) <= controller_d0_oe(1) when port_config(1) = sr_controller else
@@ -821,6 +976,10 @@ uart_recieve_btye: process(CLK)
                       multitap_d1_oe(2)   when port_config(2) = multitap_5p else
                       '1';  
   
+  console_d0_oe(3) <= '1';
+  console_d1_oe(3) <= '1';
+  console_d0_oe(4) <= '1';
+  console_d1_oe(4) <= '1';
   
   controller_clock(1) <= console_clock_final(1)    when port_config(1) = sr_controller else
                          console_clock_final(1)    when port_config(1) = y_cable else

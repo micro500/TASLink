@@ -10,7 +10,7 @@ entity main is
            console_clock : in  STD_LOGIC_VECTOR(1 to 2);
            console_d0 : out STD_LOGIC_VECTOR(1 to 2);
            console_d1 : out STD_LOGIC_VECTOR(1 to 2);
-           console_io : in STD_LOGIC_VECTOR(1 to 2);
+           --console_io : in STD_LOGIC_VECTOR(1 to 2);
            console_d0_oe : out std_logic_VECTOR(1 to 2);
            console_d1_oe : out std_logic_VECTOR(1 to 2);
            debug : out STD_LOGIC_VECTOR (7 downto 0));
@@ -134,8 +134,6 @@ architecture Behavioral of main is
   signal buffer_full : std_logic_vector(1 to 8);
   signal buffer_clear : std_logic_vector(1 to 8);
   
-  signal prev_latch : std_logic := '0';
-  
   signal frame_timer_active : std_logic := '0';
   signal frame_timer : integer range 0 to 160000 := 0;
   
@@ -187,6 +185,18 @@ architecture Behavioral of main is
   type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
   signal custom_command_mask : vector8(1 to 8) := (others => (others => '0'));
 
+
+  signal console_io : STD_LOGIC_VECTOR(1 to 2) := (others => '1');
+  
+  signal event_signal : std_logic_vector(1 to 4) := (others => '0');
+  signal event_received : std_logic_vector(1 to 4) := (others => '0');
+  type timer_length_arr is array (natural range <>) of integer range 0 to 127;
+  signal event_timer_length : timer_length_arr(1 to 4) := (20, 20, 0, 0);
+  type event_lane_mask_arr is array (natural range <>) of std_logic_vector(7 downto 0);
+  signal event_buffer_read_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
+  signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '1'));
+  signal event_timer_active : std_logic_vector(1 to 4) := (others => '0');
+  
 begin
 
   GENERATE_FILTERS:
@@ -580,49 +590,170 @@ uart_recieve_btye: process(CLK)
 	end process;
   
   process (clk) is
+    variable latch_q_ms_timer : integer range 0 to 127 := 0;
+    -- 0.25ms = 8000 cycles of the 32MHz clock (0.00025 * 32000000)
+    variable latch_clk_timer : integer range 0 to 7999 := 0;
+
+    variable new_buffer_read : std_logic_vector(7 downto 0) := "00000000";
+    variable event_count : integer range 0 to 255 := 0;
+    variable prev_latch : std_logic := '0';
   begin
     if (rising_edge(clk)) then
-      uart_write <= '0';
-      buffer_read <= "00000000";
+      -- Start with no advancing
+      event_buffer_read_mask(1) <= "00000000";
       
-      if (windowed_mode = '1' and frame_timer_active = '1') then
-        if (frame_timer = 96000) then
-          frame_timer <= 0;
-          frame_timer_active <= '0';
-        
-          buffer_read <= "11111111";
-          
-          -- Send feedback that a frame was consumed
-          if (uart_buffer_full = '0') then
-            uart_write <= '1';
-            data_to_uart <= x"66";
+      -- Start timer
+      if (console_latch_f(1) /= prev_latch) then
+        -- Rising edge of latch
+        if (console_latch_f(1) = '1') then
+          -- Check timer length, if 0
+          if (event_timer_length(1) = 0) then
+            if (event_count < 255) then
+              event_count := event_count + 1;
+              event_buffer_read_mask(1) <= event_lane_mask(1);
+              event_timer_active(1) <= '0';
+            end if;
+          else
+            event_timer_active(1) <= '1';
+            latch_clk_timer := 0;
+            latch_q_ms_timer := 0;
           end if;
-          
+        end if;
+        prev_latch := console_latch_f(1);
+      end if;
+      
+      -- Check/advance timer
+      if (event_timer_active(1) = '1') then
+        if (latch_clk_timer = 7999) then
+          if (latch_q_ms_timer >= event_timer_length(1)) then
+            event_count := event_count + 1;
+            event_buffer_read_mask(1) <= event_lane_mask(1);
+            event_timer_active(1) <= '0';
+          else
+            latch_q_ms_timer := latch_q_ms_timer + 1;
+            latch_clk_timer := 0;
+          end if;
         else
-          frame_timer <= frame_timer + 1;
+          latch_clk_timer := latch_clk_timer + 1;
         end if;
       end if;
-
-      if (console_latch_f(1) /= prev_latch) then
-        if (console_latch_f(1) = '1') then
-          if (windowed_mode = '1') then
-            frame_timer <= 0;
-            frame_timer_active <= '1';
-          else
-            buffer_read <= "11111111";
-            
-            -- Send feedback that a frame was consumed
-            if (uart_buffer_full = '0') then
-              uart_write <= '1';
-              data_to_uart <= x"66";
-            end if;
+    
+      if (event_signal(1) = '1') then
+        if (event_received(1) = '1') then
+          event_signal(1) <= '0';
+        end if;
+      else
+        if (event_received(1) = '0') then
+          if (event_count > 0) then
+            event_count := event_count - 1;
+            event_signal(1) <= '1';
           end if;
         end if;
-        prev_latch <= console_latch_f(1);
       end if;
     end if;
   end process;
   
+  process (clk) is
+    variable latch_q_ms_timer : integer range 0 to 127 := 0;
+    -- 0.25ms = 8000 cycles of the 32MHz clock (0.00025 * 32000000)
+    variable latch_clk_timer : integer range 0 to 7999 := 0;
+
+    variable new_buffer_read : std_logic_vector(7 downto 0) := "00000000";
+    variable event_count : integer range 0 to 255 := 0;
+    variable prev_latch : std_logic := '0';
+
+  begin
+    if (rising_edge(clk)) then
+      -- Start with no advancing
+      event_buffer_read_mask(2) <= "00000000";
+      
+      -- Start timer
+      if (console_latch_f(2) /= prev_latch) then
+        -- Rising edge of latch
+        if (console_latch_f(2) = '1') then
+          -- Check timer length, if 0
+          if (event_timer_length(2) = 0) then
+            if (event_count < 255) then
+              event_count := event_count + 1;
+              event_buffer_read_mask(2) <= event_lane_mask(2);
+              event_timer_active(2) <= '0';
+            end if;
+          else
+            event_timer_active(2) <= '1';
+            latch_clk_timer := 0;
+            latch_q_ms_timer := 0;
+          end if;
+        end if;
+        prev_latch := console_latch_f(2);
+      end if;
+      
+      -- Check/advance timer
+      if (event_timer_active(2) = '1') then
+        if (latch_clk_timer = 7999) then
+          if (latch_q_ms_timer >= event_timer_length(2)) then
+            event_count := event_count + 1;
+            event_buffer_read_mask(2) <= event_lane_mask(2);
+            event_timer_active(2) <= '0';
+          else
+            latch_q_ms_timer := latch_q_ms_timer + 1;
+            latch_clk_timer := 0;
+          end if;
+        else
+          latch_clk_timer := latch_clk_timer + 1;
+        end if;
+      end if;
+    
+      if (event_signal(2) = '1') then
+        if (event_received(2) = '1') then
+          event_signal(2) <= '0';
+        end if;
+      else
+        if (event_received(2) = '0') then
+          if (event_count > 0) then
+            event_count := event_count - 1;
+            event_signal(2) <= '1';
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  
+  buffer_read <= event_buffer_read_mask(1);
+  
+  
+  
+  process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      uart_write <= '0';
+      
+      
+      if (event_received(1) = '1') then
+        if (event_signal(1) = '0') then
+          event_received(1) <= '0';
+        end if;
+      end if;
+      
+      if (event_received(2) = '1') then
+        if (event_signal(2) = '0') then
+          event_received(2) <= '0';
+        end if;
+      end if;
+      
+      if (uart_buffer_full = '0') then
+        if (event_received(1) = '0' and event_signal(1) = '1') then
+          event_received(1) <= '1';
+          uart_write <= '1';
+          data_to_uart <= x"66"; -- "f"
+        elsif (event_received(2) = '0' and event_signal(2) = '1') then
+          event_received(2) <= '1';
+          uart_write <= '1';
+          data_to_uart <= x"67"; -- "f"
+        end if;
+      end if;
+    end if;
+  end process;  
   
   console_clock_final(1) <= console_clock_f(1) when port_clock_delay(1) = '0' else
                             console_clock_f_delay(1);

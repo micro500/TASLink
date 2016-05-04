@@ -1,0 +1,14 @@
+*.s#*
+*.b#*
+*.l#*
+*.GTL
+*.GBL
+*.GTS
+*.GBS
+*.GTO
+*.GBO
+*.GKO
+*.GML
+*.XLN
+*.dri
+*.gpi

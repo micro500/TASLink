@@ -120,10 +120,12 @@ architecture Behavioral of main is
   signal data_receive_mask : std_logic_vector(8 downto 1) := (others => '0');
   signal active_setup_cmd : std_logic_vector(7 downto 0);
   
-  type uart_states is (main_cmd, button_data_cmd, setup_cmd, setup_cmd_data);
+  type uart_states is (main_cmd, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
   signal uart_state : uart_states := main_cmd;
   signal data_controller_id : integer range 1 to 8;
   signal data_byte_id : integer range 1 to 4;
+  type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
+  signal setup_cmd_data : vector8(1 to 3) := (others => (others => '0'));
   
   type vector32 is array (natural range <>) of std_logic_vector(31 downto 0);
   signal buffer_new_data : vector32(1 to 8);
@@ -136,8 +138,6 @@ architecture Behavioral of main is
   
   signal frame_timer_active : std_logic := '0';
   signal frame_timer : integer range 0 to 160000 := 0;
-  
-  signal windowed_mode : std_logic := '0';
   
   signal uart_data_temp : std_logic_vector(7 downto 0);
   
@@ -178,20 +178,21 @@ architecture Behavioral of main is
   
   type port_config_type is (sr_controller, y_cable, multitap_2p, multitap_5p, fourscore);
   type port_config_arr is array (natural range <>) of port_config_type;
-  signal port_config : port_config_arr(1 to 2) := (others => sr_controller);
+  signal port_config : port_config_arr(1 to 4) := (others => sr_controller);
   
-  signal port_clock_delay : std_logic_vector(1 to 2) := (others => '0');
+  signal port_clock_delay : std_logic_vector(1 to 4) := (others => '0');
 
-  type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
   signal custom_command_mask : vector8(1 to 8) := (others => (others => '0'));
 
 
   signal console_io : STD_LOGIC_VECTOR(1 to 4) := (others => '1');
   
+  signal event_enabled : std_logic_vector(1 to 4) := (others => '0');
   signal event_signal : std_logic_vector(1 to 4) := (others => '0');
   signal event_received : std_logic_vector(1 to 4) := (others => '0');
   type timer_length_arr is array (natural range <>) of integer range 0 to 127;
   signal event_timer_length : timer_length_arr(1 to 4) := (20, 20, 0, 0);
+  signal event_timer_restart : std_logic_vector(1 to 4) := (others => '0');
   type event_lane_mask_arr is array (natural range <>) of std_logic_vector(7 downto 0);
   signal event_buffer_read_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
   signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '1'));
@@ -416,20 +417,12 @@ uart_recieve_btye: process(CLK)
                   uart_state <= main_cmd;
                 end if;
               
-              when x"63" => -- 'c'
+              when x"52" => -- 'R'
                 buffer_clear <= "11111111";
                 --uart_state <= main_cmd;
               
-              when x"77" => -- 'w'
-                windowed_mode <= '1';
-                --uart_state <= main_cmd;
-                
-              when x"6C" => -- 'l'
-                windowed_mode <= '0';
-                --uart_state <= main_cmd;
-                
               when x"73" => -- 's'
-                uart_state <= setup_cmd;
+                uart_state <= setup_cmd_data1;
                 
               when others =>
               
@@ -474,115 +467,193 @@ uart_recieve_btye: process(CLK)
               data_byte_id <= data_byte_id + 1;
             end if;
          
-         when setup_cmd =>
-            active_setup_cmd <= data_from_uart;
-            uart_state <= setup_cmd_data;
+          when setup_cmd_data1 =>
+            setup_cmd_data(1) <= data_from_uart;
+            uart_state <= setup_cmd_data2;
          
-         when setup_cmd_data =>
-           case active_setup_cmd is
-              when x"31" => -- '1'
-                controller_connected(1) <= data_from_uart(7);
-                controller_overread_value(1) <= data_from_uart(6);
-                controller_size(1) <= data_from_uart(1 downto 0);
-
-              when x"32" => -- '2'
-                controller_connected(2) <= data_from_uart(7);
-                controller_overread_value(2) <= data_from_uart(6);
-                controller_size(2) <= data_from_uart(1 downto 0);
-                
-              when x"33" => -- '3'
-                controller_connected(3) <= data_from_uart(7);
-                controller_overread_value(3) <= data_from_uart(6);
-                controller_size(3) <= data_from_uart(1 downto 0);
-                
-              when x"34" => -- '4'
-                controller_connected(4) <= data_from_uart(7);
-                controller_overread_value(4) <= data_from_uart(6);
-                controller_size(4) <= data_from_uart(1 downto 0);
-                
-              when x"35" => -- '5'
-                controller_connected(5) <= data_from_uart(7);
-                controller_overread_value(5) <= data_from_uart(6);
-                controller_size(5) <= data_from_uart(1 downto 0);
-                
-              when x"36" => -- '6'
-                controller_connected(6) <= data_from_uart(7);
-                controller_overread_value(6) <= data_from_uart(6);
-                controller_size(6) <= data_from_uart(1 downto 0);
-                
-              when x"37" => -- '7'
-                controller_connected(7) <= data_from_uart(7);
-                controller_overread_value(7) <= data_from_uart(6);
-                controller_size(7) <= data_from_uart(1 downto 0);
-                
-              when x"38" => -- '8'
-                controller_connected(8) <= data_from_uart(7);
-                controller_overread_value(8) <= data_from_uart(6);
-                controller_size(8) <= data_from_uart(1 downto 0);
-                
+          when setup_cmd_data2 =>
+            case setup_cmd_data(1) is
               when x"41" => -- 'A'
                 custom_command_mask(1) <= data_from_uart;
+                uart_state <= main_cmd;
               
               when x"42" => -- 'B'
                 custom_command_mask(2) <= data_from_uart;
+                uart_state <= main_cmd;
 
               when x"43" => -- 'C'
                 custom_command_mask(3) <= data_from_uart;
+                uart_state <= main_cmd;
 
               when x"44" => -- 'D'
                 custom_command_mask(4) <= data_from_uart;
-                
-              when x"63" => -- 'c'
-                case data_from_uart(3 downto 0) is
-                  when x"0" =>
-                    port_config(1) <= sr_controller;
-                  
-                  when x"1" =>
-                    port_config(1) <= y_cable;
-                    
-                  when x"2" =>
-                    port_config(1) <= multitap_2p;
-                    
-                  when x"3" =>
-                    port_config(1) <= multitap_5p;
-                  
-                  when x"f" =>
-                    port_config(1) <= fourscore;
-                    
-                  when others => 
-                end case;
-                
-                port_clock_delay(1) <= data_from_uart(7);
+                uart_state <= main_cmd;
               
-              when x"64" => -- 'd'
-                case data_from_uart is
-                  when x"00" =>
-                    port_config(2) <= sr_controller;
+              when x"63" => -- 'c'
+                setup_cmd_data(2) <= data_from_uart;
+                uart_state <= setup_cmd_data3;
+              
+              when x"70" => -- 'p'
+                setup_cmd_data(2) <= data_from_uart;
+                uart_state <= setup_cmd_data3;
+              
+              when x"65" => -- 'e'
+                setup_cmd_data(2) <= data_from_uart;
+                uart_state <= setup_cmd_data3;
+              
+              when others =>
+                uart_state <= main_cmd;
+              
+            end case;
+         
+          when setup_cmd_data3 =>
+            case setup_cmd_data(1) is
+              when x"63" => -- 'c'
+                case setup_cmd_data(2) is
+                  when x"31" => -- '1'
+                    controller_connected(1) <= data_from_uart(7);
+                    controller_overread_value(1) <= data_from_uart(6);
+                    controller_size(1) <= data_from_uart(1 downto 0);
+
+                  when x"32" => -- '2'
+                    controller_connected(2) <= data_from_uart(7);
+                    controller_overread_value(2) <= data_from_uart(6);
+                    controller_size(2) <= data_from_uart(1 downto 0);
+                    
+                  when x"33" => -- '3'
+                    controller_connected(3) <= data_from_uart(7);
+                    controller_overread_value(3) <= data_from_uart(6);
+                    controller_size(3) <= data_from_uart(1 downto 0);
+                    
+                  when x"34" => -- '4'
+                    controller_connected(4) <= data_from_uart(7);
+                    controller_overread_value(4) <= data_from_uart(6);
+                    controller_size(4) <= data_from_uart(1 downto 0);
+                    
+                  when x"35" => -- '5'
+                    controller_connected(5) <= data_from_uart(7);
+                    controller_overread_value(5) <= data_from_uart(6);
+                    controller_size(5) <= data_from_uart(1 downto 0);
+                    
+                  when x"36" => -- '6'
+                    controller_connected(6) <= data_from_uart(7);
+                    controller_overread_value(6) <= data_from_uart(6);
+                    controller_size(6) <= data_from_uart(1 downto 0);
+                    
+                  when x"37" => -- '7'
+                    controller_connected(7) <= data_from_uart(7);
+                    controller_overread_value(7) <= data_from_uart(6);
+                    controller_size(7) <= data_from_uart(1 downto 0);
+                    
+                  when x"38" => -- '8'
+                    controller_connected(8) <= data_from_uart(7);
+                    controller_overread_value(8) <= data_from_uart(6);
+                    controller_size(8) <= data_from_uart(1 downto 0);
                   
-                  when x"01" =>
-                    port_config(2) <= y_cable;
-                    
-                  when x"02" =>
-                    port_config(2) <= multitap_2p;
-                    
-                  when x"03" =>
-                    port_config(2) <= multitap_5p;
-                  
-                  when x"ff" =>
-                    port_config(2) <= fourscore;
-                    
                   when others =>
                 end case;
-                
-                port_clock_delay(2) <= data_from_uart(7);
               
+                uart_state <= main_cmd;
+          
+              when x"70" => -- 'p'
+                case setup_cmd_data(2) is
+                  when x"31" => -- '1'
+                    case data_from_uart(3 downto 0) is
+                      when x"0" =>
+                        port_config(1) <= sr_controller;
+                      
+                      when x"1" =>
+                        port_config(1) <= y_cable;
+                        
+                      when x"2" =>
+                        port_config(1) <= multitap_2p;
+                        
+                      when x"3" =>
+                        port_config(1) <= multitap_5p;
+                      
+                      when x"f" =>
+                        port_config(1) <= fourscore;
+                        
+                      when others => 
+                    end case;
+                  
+                    port_clock_delay(1) <= data_from_uart(7);
+                
+                  when x"32" => -- '2'
+                    case data_from_uart is
+                      when x"00" =>
+                        port_config(2) <= sr_controller;
+                      
+                      when x"01" =>
+                        port_config(2) <= y_cable;
+                        
+                      when x"02" =>
+                        port_config(2) <= multitap_2p;
+                        
+                      when x"03" =>
+                        port_config(2) <= multitap_5p;
+                      
+                      when x"ff" =>
+                        port_config(2) <= fourscore;
+                        
+                      when others =>
+                    end case;
+                    
+                    port_clock_delay(2) <= data_from_uart(7);
+                    
+                
+                  when others =>
+                
+                end case;
+                uart_state <= main_cmd;
+
+              when x"65" => -- 'e'
+                setup_cmd_data(3) <= data_from_uart;
+                uart_state <= setup_cmd_data4;
+              
+              when others =>
+                uart_state <= main_cmd;
+            
+            end case;
+                            
+          when setup_cmd_data4 =>
+            case setup_cmd_data(1) is
+              when x"65" => -- 'e'
+                case setup_cmd_data(2) is
+                  when x"31" => -- '1'
+                    event_enabled(1) <= setup_cmd_data(3)(7);
+                    event_timer_restart(1) <= setup_cmd_data(3)(6);
+                    event_timer_length(1) <= to_integer(unsigned(setup_cmd_data(3)(5 downto 0)));
+                    event_lane_mask(1) <= data_from_uart;
+                    
+                  when x"32" => -- '2'
+                    event_enabled(2) <= setup_cmd_data(3)(7);
+                    event_timer_restart(2) <= setup_cmd_data(3)(6);
+                    event_timer_length(2) <= to_integer(unsigned(setup_cmd_data(3)(5 downto 0)));
+                    event_lane_mask(2) <= data_from_uart;
+                    
+                  when x"33" => -- '3'
+                    event_enabled(3) <= setup_cmd_data(3)(7);
+                    event_timer_restart(3) <= setup_cmd_data(3)(6);
+                    event_timer_length(3) <= to_integer(unsigned(setup_cmd_data(3)(5 downto 0)));
+                    event_lane_mask(3) <= data_from_uart;
+                    
+                  when x"34" => -- '4'
+                    event_enabled(4) <= setup_cmd_data(3)(7);
+                    event_timer_restart(4) <= setup_cmd_data(3)(6);
+                    event_timer_length(4) <= to_integer(unsigned(setup_cmd_data(3)(5 downto 0)));
+                    event_lane_mask(4) <= data_from_uart;
+                  
+                  when others =>
+                  
+                end case;
+                
               when others =>
               
             end case;
             
             uart_state <= main_cmd;
                                 
-          when others =>
         end case;
       	uart_data_recieved <= '1';
 			end if;
@@ -849,7 +920,10 @@ uart_recieve_btye: process(CLK)
   end process;
 
   
-  buffer_read <= event_buffer_read_mask(1);
+  buffer_read <= (event_buffer_read_mask(1)(0) & event_buffer_read_mask(1)(1) & event_buffer_read_mask(1)(2) & event_buffer_read_mask(1)(3) & event_buffer_read_mask(1)(4) & event_buffer_read_mask(1)(5) & event_buffer_read_mask(1)(6) & event_buffer_read_mask(1)(7)) or 
+                 (event_buffer_read_mask(2)(0) & event_buffer_read_mask(2)(1) & event_buffer_read_mask(2)(2) & event_buffer_read_mask(2)(3) & event_buffer_read_mask(2)(4) & event_buffer_read_mask(2)(5) & event_buffer_read_mask(2)(6) & event_buffer_read_mask(2)(7)) or
+                 (event_buffer_read_mask(3)(0) & event_buffer_read_mask(3)(1) & event_buffer_read_mask(3)(2) & event_buffer_read_mask(3)(3) & event_buffer_read_mask(3)(4) & event_buffer_read_mask(3)(5) & event_buffer_read_mask(3)(6) & event_buffer_read_mask(3)(7)) or
+                 (event_buffer_read_mask(4)(0) & event_buffer_read_mask(4)(1) & event_buffer_read_mask(4)(2) & event_buffer_read_mask(4)(3) & event_buffer_read_mask(4)(4) & event_buffer_read_mask(4)(5) & event_buffer_read_mask(4)(6) & event_buffer_read_mask(4)(7));
   
   
   
@@ -911,6 +985,11 @@ uart_recieve_btye: process(CLK)
   console_clock_final(2) <= console_clock_f(2) when port_clock_delay(2) = '0' else
                             console_clock_f_delay(2);
   
+  console_clock_final(3) <= console_clock_f(3) when port_clock_delay(3) = '0' else
+                            console_clock_f_delay(3);
+  
+  console_clock_final(4) <= console_clock_f(4) when port_clock_delay(4) = '0' else
+                            console_clock_f_delay(4);
   
   controller_data(1) <= buffer_data(1);
   controller_data(2) <= buffer_data(2);
@@ -934,22 +1013,33 @@ uart_recieve_btye: process(CLK)
                    multitap_d1(1)   when port_config(1) = multitap_5p else
                    '1';
 
-  console_d0(2) <= controller_d0(5) when port_config(2) = sr_controller else
-                   controller_d0(5) when port_config(2) = y_cable else
+  console_d0(2) <= controller_d0(3) when port_config(2) = sr_controller else
+                   controller_d0(3) when port_config(2) = y_cable else
                    multitap_d0(2)   when port_config(2) = multitap_2p else
                    multitap_d0(2)   when port_config(2) = multitap_5p else
                    '1';
 
-  console_d1(2) <= controller_d1(5) when port_config(2) = sr_controller else
-                   controller_d0(6) when port_config(2) = y_cable else
+  console_d1(2) <= controller_d1(3) when port_config(2) = sr_controller else
+                   controller_d0(4) when port_config(2) = y_cable else
                    multitap_d1(2)   when port_config(2) = multitap_2p else
                    multitap_d1(2)   when port_config(2) = multitap_5p else
                    '1';
                    
-  console_d0(3) <= '1';
-  console_d1(3) <= '1';
-  console_d0(4) <= '1';
-  console_d1(4) <= '1';
+  console_d0(3) <= controller_d0(5) when port_config(3) = sr_controller else
+                   controller_d0(5) when port_config(3) = y_cable else
+                   '1';
+
+  console_d1(3) <= controller_d1(5) when port_config(3) = sr_controller else
+                   controller_d0(6) when port_config(3) = y_cable else
+                   '1';
+
+  console_d0(4) <= controller_d0(7) when port_config(4) = sr_controller else
+                   controller_d0(7) when port_config(4) = y_cable else
+                   '1';
+
+  console_d1(4) <= controller_d1(7) when port_config(4) = sr_controller else
+                   controller_d0(8) when port_config(4) = y_cable else
+                   '1';
   
   
   console_d0_oe(1) <= controller_d0_oe(1) when port_config(1) = sr_controller else
@@ -964,22 +1054,34 @@ uart_recieve_btye: process(CLK)
                       multitap_d1_oe(1)   when port_config(1) = multitap_5p else
                       '1';  
   
-  console_d0_oe(2) <= controller_d0_oe(5) when port_config(2) = sr_controller else
-                      controller_d0_oe(5) when port_config(2) = y_cable else
+  console_d0_oe(2) <= controller_d0_oe(3) when port_config(2) = sr_controller else
+                      controller_d0_oe(3) when port_config(2) = y_cable else
                       multitap_d0_oe(2)   when port_config(2) = multitap_2p else
                       multitap_d0_oe(2)   when port_config(2) = multitap_5p else
                       '1';
                       
-  console_d1_oe(2) <= controller_d1_oe(5) when port_config(2) = sr_controller else
-                      controller_d0_oe(6) when port_config(2) = y_cable else
+  console_d1_oe(2) <= controller_d1_oe(3) when port_config(2) = sr_controller else
+                      controller_d0_oe(4) when port_config(2) = y_cable else
                       multitap_d1_oe(2)   when port_config(2) = multitap_2p else
                       multitap_d1_oe(2)   when port_config(2) = multitap_5p else
                       '1';  
   
-  console_d0_oe(3) <= '1';
-  console_d1_oe(3) <= '1';
-  console_d0_oe(4) <= '1';
-  console_d1_oe(4) <= '1';
+  console_d0_oe(3) <= controller_d0_oe(5) when port_config(3) = sr_controller else
+                      controller_d0_oe(5) when port_config(3) = y_cable else
+                      '1';
+                      
+  console_d1_oe(3) <= controller_d1_oe(5) when port_config(3) = sr_controller else
+                      controller_d0_oe(6) when port_config(3) = y_cable else
+                      '1';  
+  
+  console_d0_oe(4) <= controller_d0_oe(7) when port_config(4) = sr_controller else
+                      controller_d0_oe(7) when port_config(4) = y_cable else
+                      '1';
+                      
+  console_d1_oe(4) <= controller_d1_oe(7) when port_config(4) = sr_controller else
+                      controller_d0_oe(8) when port_config(4) = y_cable else
+                      '1';
+                      
   
   controller_clock(1) <= console_clock_final(1)    when port_config(1) = sr_controller else
                          console_clock_final(1)    when port_config(1) = y_cable else
@@ -993,38 +1095,39 @@ uart_recieve_btye: process(CLK)
                          multitap_port_clock(1)(2) when port_config(1) = multitap_5p else
                          '1';
 
-  controller_clock(3) <= '1'                       when port_config(1) = sr_controller else
-                         '1'                       when port_config(1) = y_cable else
+  controller_clock(5) <= console_clock_final(3)    when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                         console_clock_final(3)    when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                          multitap_port_clock(1)(3) when port_config(1) = multitap_2p else
                          multitap_port_clock(1)(3) when port_config(1) = multitap_5p else
                          '1';
   
-  controller_clock(4) <= '1'                       when port_config(1) = sr_controller else
-                         '1'                       when port_config(1) = y_cable else
+  controller_clock(6) <= '1'                       when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                         console_clock_final(3)    when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                          multitap_port_clock(1)(4) when port_config(1) = multitap_2p else
                          multitap_port_clock(1)(4) when port_config(1) = multitap_5p else
                          '1';
   
-  controller_clock(5) <= console_clock_final(2)    when port_config(2) = sr_controller else
+  controller_clock(3) <= console_clock_final(2)    when port_config(2) = sr_controller else
                          console_clock_final(2)    when port_config(2) = y_cable else
                          multitap_port_clock(2)(1) when port_config(2) = multitap_2p else
                          multitap_port_clock(2)(1) when port_config(2) = multitap_5p else
                          '1';
 
-  controller_clock(6) <= '1'                       when port_config(2) = sr_controller else
+  controller_clock(4) <= '1'                       when port_config(2) = sr_controller else
                          console_clock_final(2)    when port_config(2) = y_cable else
                          multitap_port_clock(2)(2) when port_config(2) = multitap_2p else
                          multitap_port_clock(2)(2) when port_config(2) = multitap_5p else
                          '1';
 
-  controller_clock(7) <= '1'                       when port_config(2) = sr_controller else
+  controller_clock(7) <= console_clock_final(4)    when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                         console_clock_final(4)    when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                          '1'                       when port_config(2) = y_cable else
                          multitap_port_clock(2)(3) when port_config(2) = multitap_2p else
                          multitap_port_clock(2)(3) when port_config(2) = multitap_5p else
                          '1';
   
-  controller_clock(8) <= '1'                       when port_config(2) = sr_controller else
-                         '1'                       when port_config(2) = y_cable else
+  controller_clock(8) <= '1'                       when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                         console_clock_final(4)    when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                          multitap_port_clock(2)(4) when port_config(2) = multitap_2p else
                          multitap_port_clock(2)(4) when port_config(2) = multitap_5p else
                          '1';
@@ -1042,38 +1145,38 @@ uart_recieve_btye: process(CLK)
                          multitap_port_latch(1)(2) when port_config(1) = multitap_5p else
                          '0';
 
-  controller_latch(3) <= '0'                       when port_config(1) = sr_controller else
-                         '0'                       when port_config(1) = y_cable else
+  controller_latch(5) <= console_latch_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                         console_latch_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                          multitap_port_latch(1)(3) when port_config(1) = multitap_2p else
                          multitap_port_latch(1)(3) when port_config(1) = multitap_5p else
                          '0';
 
-  controller_latch(4) <= '0'                       when port_config(1) = sr_controller else
-                         '0'                       when port_config(1) = y_cable else
+  controller_latch(6) <= '0'                       when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                         console_latch_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                          multitap_port_latch(1)(4) when port_config(1) = multitap_2p else
                          multitap_port_latch(1)(4) when port_config(1) = multitap_5p else
                          '0';
 
-  controller_latch(5) <= console_latch_f(2)        when port_config(2) = sr_controller else
+  controller_latch(3) <= console_latch_f(2)        when port_config(2) = sr_controller else
                          console_latch_f(2)        when port_config(2) = y_cable else
                          multitap_port_latch(2)(1) when port_config(2) = multitap_2p else
                          multitap_port_latch(2)(1) when port_config(2) = multitap_5p else
                          '0';
   
-  controller_latch(6) <= '0'                       when port_config(2) = sr_controller else
+  controller_latch(4) <= '0'                       when port_config(2) = sr_controller else
                          console_latch_f(2)        when port_config(2) = y_cable else
                          multitap_port_latch(2)(2) when port_config(2) = multitap_2p else
                          multitap_port_latch(2)(2) when port_config(2) = multitap_5p else
                          '0';
 
-  controller_latch(7) <= '0'                       when port_config(2) = sr_controller else
-                         '0'                       when port_config(2) = y_cable else
+  controller_latch(7) <= console_latch_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                         console_latch_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                          multitap_port_latch(2)(3) when port_config(2) = multitap_2p else
                          multitap_port_latch(2)(3) when port_config(2) = multitap_5p else
                          '0';
 
-  controller_latch(8) <= '0'                       when port_config(2) = sr_controller else
-                         '0'                       when port_config(2) = y_cable else
+  controller_latch(8) <= '0'                       when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                         console_latch_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                          multitap_port_latch(2)(4) when port_config(2) = multitap_2p else
                          multitap_port_latch(2)(4) when port_config(2) = multitap_5p else
                          '0';
@@ -1091,38 +1194,38 @@ uart_recieve_btye: process(CLK)
                       multitap_port_io(1)(2) when port_config(1) = multitap_5p else
                       '1';
 
-  controller_io(3) <= '1'                    when port_config(1) = sr_controller else
-                      '1'                    when port_config(1) = y_cable else
+  controller_io(5) <= console_io_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                      console_io_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                       multitap_port_io(1)(3) when port_config(1) = multitap_2p else
                       multitap_port_io(1)(3) when port_config(1) = multitap_5p else
                       '1';
 
-  controller_io(4) <= '1'                    when port_config(1) = sr_controller else
-                      '1'                    when port_config(1) = y_cable else
+  controller_io(6) <= '1'                    when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = sr_controller) else
+                      console_io_f(3)        when ((port_config(1) = sr_controller or port_config(1) = y_cable) and port_config(3) = y_cable) else
                       multitap_port_io(1)(4) when port_config(1) = multitap_2p else
                       multitap_port_io(1)(4) when port_config(1) = multitap_5p else
                       '1';
 
-  controller_io(5) <= console_io_f(2)        when port_config(2) = sr_controller else
+  controller_io(3) <= console_io_f(2)        when port_config(2) = sr_controller else
                       console_io_f(2)        when port_config(2) = y_cable else
                       multitap_port_io(2)(1) when port_config(2) = multitap_2p else
                       multitap_port_io(2)(1) when port_config(2) = multitap_5p else
                       '1';
 
-  controller_io(6) <= '1'                    when port_config(2) = sr_controller else
+  controller_io(4) <= '1'                    when port_config(2) = sr_controller else
                       console_io_f(1)        when port_config(2) = y_cable else
                       multitap_port_io(2)(2) when port_config(2) = multitap_2p else
                       multitap_port_io(2)(2) when port_config(2) = multitap_5p else
                       '1';
 
-  controller_io(7) <= '1'                    when port_config(2) = sr_controller else
-                      '1'                    when port_config(2) = y_cable else
+  controller_io(7) <= console_io_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                      console_io_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                       multitap_port_io(2)(3) when port_config(2) = multitap_2p else
                       multitap_port_io(2)(3) when port_config(2) = multitap_5p else
                       '1';
 
-  controller_io(8) <= '1'                    when port_config(2) = sr_controller else
-                      '1'                    when port_config(2) = y_cable else
+  controller_io(8) <= '1'                    when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = sr_controller) else
+                      console_io_f(4)        when ((port_config(2) = sr_controller or port_config(2) = y_cable) and port_config(4) = y_cable) else
                       multitap_port_io(2)(4) when port_config(2) = multitap_2p else
                       multitap_port_io(2)(4) when port_config(2) = multitap_5p else
                       '1';
@@ -1146,44 +1249,44 @@ uart_recieve_btye: process(CLK)
   
   multitap_port_d0(1)(1) <= controller_d0(1);
   multitap_port_d0(1)(2) <= controller_d0(2);
-  multitap_port_d0(1)(3) <= controller_d0(3);
-  multitap_port_d0(1)(4) <= controller_d0(4);
+  multitap_port_d0(1)(3) <= controller_d0(5);
+  multitap_port_d0(1)(4) <= controller_d0(6);
   
   multitap_port_d1(1)(1) <= controller_d1(1);
   multitap_port_d1(1)(2) <= controller_d1(2);
-  multitap_port_d1(1)(3) <= controller_d1(3);
-  multitap_port_d1(1)(4) <= controller_d1(4);
+  multitap_port_d1(1)(3) <= controller_d1(5);
+  multitap_port_d1(1)(4) <= controller_d1(6);
   
   
   multitap_port_d0_oe(1)(1) <= controller_d0_oe(1);
   multitap_port_d0_oe(1)(2) <= controller_d0_oe(2);
-  multitap_port_d0_oe(1)(3) <= controller_d0_oe(3);
-  multitap_port_d0_oe(1)(4) <= controller_d0_oe(4);
+  multitap_port_d0_oe(1)(3) <= controller_d0_oe(5);
+  multitap_port_d0_oe(1)(4) <= controller_d0_oe(6);
 
   multitap_port_d1_oe(1)(1) <= controller_d1_oe(1);
   multitap_port_d1_oe(1)(2) <= controller_d1_oe(2);
-  multitap_port_d1_oe(1)(3) <= controller_d1_oe(3);
-  multitap_port_d1_oe(1)(4) <= controller_d1_oe(4);
+  multitap_port_d1_oe(1)(3) <= controller_d1_oe(5);
+  multitap_port_d1_oe(1)(4) <= controller_d1_oe(6);
   
   
-  multitap_port_d0(2)(1) <= controller_d0(5);
-  multitap_port_d0(2)(2) <= controller_d0(6);
+  multitap_port_d0(2)(1) <= controller_d0(3);
+  multitap_port_d0(2)(2) <= controller_d0(4);
   multitap_port_d0(2)(3) <= controller_d0(7);
   multitap_port_d0(2)(4) <= controller_d0(8);
   
-  multitap_port_d1(2)(1) <= controller_d1(5);
-  multitap_port_d1(2)(2) <= controller_d1(6);
+  multitap_port_d1(2)(1) <= controller_d1(3);
+  multitap_port_d1(2)(2) <= controller_d1(4);
   multitap_port_d1(2)(3) <= controller_d1(7);
   multitap_port_d1(2)(4) <= controller_d1(8);
   
   
-  multitap_port_d0_oe(2)(1) <= controller_d0_oe(5);
-  multitap_port_d0_oe(2)(2) <= controller_d0_oe(6);
+  multitap_port_d0_oe(2)(1) <= controller_d0_oe(3);
+  multitap_port_d0_oe(2)(2) <= controller_d0_oe(4);
   multitap_port_d0_oe(2)(3) <= controller_d0_oe(7);
   multitap_port_d0_oe(2)(4) <= controller_d0_oe(8);
 
-  multitap_port_d1_oe(2)(1) <= controller_d1_oe(5);
-  multitap_port_d1_oe(2)(2) <= controller_d1_oe(6);
+  multitap_port_d1_oe(2)(1) <= controller_d1_oe(3);
+  multitap_port_d1_oe(2)(2) <= controller_d1_oe(4);
   multitap_port_d1_oe(2)(3) <= controller_d1_oe(7);
   multitap_port_d1_oe(2)(4) <= controller_d1_oe(8);
 

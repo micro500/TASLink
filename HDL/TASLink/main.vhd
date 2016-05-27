@@ -5,7 +5,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity main is
     Port ( CLK : in std_logic;
            RX : in std_logic;
-           TX : out std_logic;
+           TXraw : out std_logic;
            console_latch : in  STD_LOGIC_VECTOR(1 to 4);
            console_clock : in  STD_LOGIC_VECTOR(1 to 4);
            console_d0 : out STD_LOGIC_VECTOR(1 to 4);
@@ -13,7 +13,11 @@ entity main is
            --console_io : in STD_LOGIC_VECTOR(1 to 4);
            console_d0_oe : out std_logic_VECTOR(1 to 4);
            console_d1_oe : out std_logic_VECTOR(1 to 4);
-           debug : out STD_LOGIC_VECTOR (7 downto 0));
+           debug : out STD_LOGIC_VECTOR (7 downto 0);
+           visualization_latch : out STD_LOGIC_VECTOR(1 to 4);
+           visualization_clock : out STD_LOGIC_VECTOR(1 to 4);
+           visualization_d0 : out STD_LOGIC_VECTOR(1 to 4);
+           visualization_d1 : out STD_LOGIC_VECTOR(1 to 4));
 end main;
 
 architecture Behavioral of main is 
@@ -92,6 +96,20 @@ architecture Behavioral of main is
            port_d1 : in STD_LOGIC_VECTOR(1 to 4);
            port_d0_oe : in STD_LOGIC_VECTOR(1 to 4);
            port_d1_oe : in STD_LOGIC_VECTOR(1 to 4));
+  end component;
+  
+  component visualization is
+    Port ( clk : in  STD_LOGIC;
+           data1 : in  STD_LOGIC_VECTOR (15 downto 0);
+           data2 : in  STD_LOGIC_VECTOR (15 downto 0);
+           data3 : in  STD_LOGIC_VECTOR (15 downto 0);
+           data4 : in  STD_LOGIC_VECTOR (15 downto 0);
+           latch : out  STD_LOGIC;
+           clock : out  STD_LOGIC;
+           d0 : out  STD_LOGIC;
+           d1 : out  STD_LOGIC;
+           d2 : out  STD_LOGIC;
+           d3 : out  STD_LOGIC);
   end component;
 
   -- Filtered signals coming from the console
@@ -198,6 +216,15 @@ architecture Behavioral of main is
   signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '1'));
   signal event_timer_active : std_logic_vector(1 to 4) := (others => '0');
   
+  type vector16 is array (natural range <>) of std_logic_vector(15 downto 0);
+  type visualization_data_arr is array (natural range <>) of vector16(1 to 4);
+  signal visualization_data : visualization_data_arr(1 to 4) := (others => (others => (others => '0')));
+  signal visualization_dout : vector4(1 to 4) := (others => (others => '0'));
+  signal visualization_lat : std_logic_vector(1 to 4) := (others => '0');
+  signal visualization_clk : std_logic_vector(1 to 4) := (others => '0');
+  
+  signal tx : std_logic := '0';
+  
 begin
 
   GENERATE_FILTERS:
@@ -294,7 +321,22 @@ begin
                                       port_d0_oe => multitap_port_d0_oe(I),
                                       port_d1_oe => multitap_port_d1_oe(I)); 
   end generate GENERATE_MULTITAPS;
-                                      
+  
+  GENERATE_VISUALIZATION:
+  for I in 1 to 4 generate
+    visualizers: visualization port map ( clk => clk,
+                                          data1 => visualization_data(I)(1),
+                                          data2 => visualization_data(I)(2),
+                                          data3 => visualization_data(I)(3),
+                                          data4 => visualization_data(I)(4),
+                                          latch => visualization_lat(I),
+                                          clock => visualization_clk(I),
+                                          d0 => visualization_dout(I)(1),
+                                          d1 => visualization_dout(I)(2),
+                                          d2 => visualization_dout(I)(3),
+                                          d3 => visualization_dout(I)(4));
+  end generate GENERATE_VISUALIZATION;
+  
 uart_recieve_btye: process(CLK)
 	begin
 		if (rising_edge(CLK)) then
@@ -600,8 +642,39 @@ uart_recieve_btye: process(CLK)
                     end case;
                     
                     port_clock_delay(2) <= data_from_uart(7);
+                  
+                  when x"33" => -- '3'
+                    case data_from_uart is
+                      when x"00" =>
+                        port_config(3) <= sr_controller;
+                      
+                      when x"01" =>
+                        port_config(3) <= y_cable;
+                      
+                      when x"ff" =>
+                        port_config(2) <= fourscore;
+                        
+                      when others =>
+                    end case;
                     
-                
+                    port_clock_delay(3) <= data_from_uart(7);
+                  
+                  when x"34" => -- '4'
+                    case data_from_uart is
+                      when x"00" =>
+                        port_config(4) <= sr_controller;
+                      
+                      when x"01" =>
+                        port_config(4) <= y_cable;
+                      
+                      when x"ff" =>
+                        port_config(4) <= fourscore;
+                        
+                      when others =>
+                    end case;
+                    
+                    port_clock_delay(4) <= data_from_uart(7);
+                  
                   when others =>
                 
                 end case;
@@ -1289,16 +1362,53 @@ uart_recieve_btye: process(CLK)
   multitap_port_d1_oe(2)(2) <= controller_d1_oe(4);
   multitap_port_d1_oe(2)(3) <= controller_d1_oe(7);
   multitap_port_d1_oe(2)(4) <= controller_d1_oe(8);
+  
+  
+  visualization_clock(1) <= visualization_clk(1);
+  visualization_clock(2) <= visualization_clk(2);
+  visualization_clock(3) <= visualization_clk(3);
+  visualization_clock(4) <= visualization_clk(4);
+  
+  visualization_latch(1) <= visualization_lat(1);
+  visualization_latch(2) <= visualization_lat(2);
+  visualization_latch(3) <= visualization_lat(3);
+  visualization_latch(4) <= visualization_lat(4);
+  
+  visualization_d0(1) <= visualization_dout(1)(1);
+  visualization_d1(1) <= visualization_dout(1)(2);
+  
+  visualization_d0(2) <= visualization_dout(2)(1);
+  visualization_d1(2) <= visualization_dout(2)(2);
+  
+  visualization_d0(3) <= visualization_dout(3)(1);
+  visualization_d1(3) <= visualization_dout(3)(2);
+  
+  visualization_d0(4) <= visualization_dout(4)(1);
+  visualization_d1(4) <= visualization_dout(4)(2);
+  
+  visualization_data(1)(1) <= not (controller_data(1)(7) & controller_data(1)(6) & controller_data(1)(5) & controller_data(1)(4) & controller_data(1)(3) & controller_data(1)(2) & controller_data(1)(1) & controller_data(1)(0) & "11111111");
+  visualization_data(1)(2) <= not (controller_data(2)(7) & controller_data(2)(6) & controller_data(2)(5) & controller_data(2)(4) & controller_data(2)(3) & controller_data(2)(2) & controller_data(2)(1) & controller_data(2)(0) & "11111111");
+  
+  visualization_data(2)(1) <= not (controller_data(3)(7) & controller_data(3)(6) & controller_data(3)(5) & controller_data(3)(4) & controller_data(3)(3) & controller_data(3)(2) & controller_data(3)(1) & controller_data(3)(0) & "11111111");
+  visualization_data(2)(2) <= not (controller_data(4)(7) & controller_data(4)(6) & controller_data(4)(5) & controller_data(4)(4) & controller_data(4)(3) & controller_data(4)(2) & controller_data(4)(1) & controller_data(4)(0) & "11111111");
+  
+  visualization_data(3)(1) <= not (controller_data(5)(7) & controller_data(5)(6) & controller_data(5)(5) & controller_data(5)(4) & controller_data(5)(3) & controller_data(5)(2) & controller_data(5)(1) & controller_data(5)(0) & "11111111");
+  visualization_data(3)(2) <= not (controller_data(6)(7) & controller_data(6)(6) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & "11111111");
+  
+  visualization_data(4)(1) <= not (controller_data(7)(7) & controller_data(7)(6) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & "11111111");
+  visualization_data(4)(2) <= not (controller_data(8)(7) & controller_data(8)(6) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & "11111111");
 
 
-  debug(0) <= console_latch_toggle(1);
-  debug(1) <= console_latch_f(2);
-  debug(2) <= console_clock_toggle(1);
-  debug(3) <= console_clock_f(2);
-  debug(4) <= '1';
-  debug(5) <= '1';
+  debug(0) <= '1';
+  debug(1) <= '1';
+  debug(2) <= '1';
+  debug(3) <= '1';
+  debug(4) <= RX;
+  debug(5) <= tx;
   debug(6) <= '1';
   debug(7) <= '1';
+
+  txraw <= TX;
 
 end Behavioral;
 

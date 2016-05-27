@@ -5,7 +5,7 @@ CONFIG PROHIBIT=P60;
 
 NET CLK                       LOC="P94"  | IOSTANDARD=LVTTL | PERIOD=31.25ns;               # CLK
 NET RX                        LOC="P101" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST;          # RX
-NET TX                        LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
+NET TXraw                     LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
 NET console_d1(4)             LOC="P48"  | IOSTANDARD=LVTTL;                                # A0
 NET console_d1_oe(4)          LOC="P51"  | IOSTANDARD=LVTTL;                                # A1
 NET console_d0(4)             LOC="P56"  | IOSTANDARD=LVTTL;                                # A2
@@ -22,14 +22,14 @@ NET debug(4)                  LOC="P88"  | IOSTANDARD=LVTTL;                    
 NET debug(5)                  LOC="P93"  | IOSTANDARD=LVTTL;                                # A13
 NET debug(6)                  LOC="P98"  | IOSTANDARD=LVTTL;                                # A14
 NET debug(7)                  LOC="P100" | IOSTANDARD=LVTTL;                                # A15
-#NET visualization_clock(4)    LOC="P99"  | IOSTANDARD=LVTTL;                                # B0
-#NET visualization_latch(4)    LOC="P97"  | IOSTANDARD=LVTTL;                                # B1
-#NET visualization_d1(4)       LOC="P92"  | IOSTANDARD=LVTTL;                                # B2
-#NET visualization_d0(4)       LOC="P87"  | IOSTANDARD=LVTTL;                                # B3
-#NET visualization_clock(3)    LOC="P84"  | IOSTANDARD=LVTTL;                                # B4
-#NET visualization_latch(3)    LOC="P82"  | IOSTANDARD=LVTTL;                                # B5
-#NET visualization_d1(3)       LOC="P80"  | IOSTANDARD=LVTTL;                                # B6
-#NET visualization_d0(3)       LOC="P78"  | IOSTANDARD=LVTTL;                                # B7
+NET visualization_clock(4)    LOC="P99"  | IOSTANDARD=LVTTL;                                # B0
+NET visualization_latch(4)    LOC="P97"  | IOSTANDARD=LVTTL;                                # B1
+NET visualization_d1(4)       LOC="P92"  | IOSTANDARD=LVTTL;                                # B2
+NET visualization_d0(4)       LOC="P87"  | IOSTANDARD=LVTTL;                                # B3
+NET visualization_clock(3)    LOC="P84"  | IOSTANDARD=LVTTL;                                # B4
+NET visualization_latch(3)    LOC="P82"  | IOSTANDARD=LVTTL;                                # B5
+NET visualization_d1(3)       LOC="P80"  | IOSTANDARD=LVTTL;                                # B6
+NET visualization_d0(3)       LOC="P78"  | IOSTANDARD=LVTTL;                                # B7
 NET console_latch(1)          LOC="P74"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;         # B8
 NET console_latch(2)          LOC="P95"  | IOSTANDARD=LVTTL;                                # B9
 NET console_latch(3)          LOC="P62"  | IOSTANDARD=LVTTL;                                # B10
@@ -38,14 +38,14 @@ NET console_d1(3)             LOC="P57"  | IOSTANDARD=LVTTL;                    
 NET console_d1_oe(3)          LOC="P55"  | IOSTANDARD=LVTTL;                                # B13
 NET console_d0(3)             LOC="P50"  | IOSTANDARD=LVTTL;                                # B14
 NET console_d0_oe(3)          LOC="P47"  | IOSTANDARD=LVTTL;                                # B15
-#NET visualization_d0(1)       LOC="P114" | IOSTANDARD=LVTTL;                                # C0
-#NET visualization_d1(1)       LOC="P115" | IOSTANDARD=LVTTL;                                # C1
-#NET visualization_latch(1)    LOC="P116" | IOSTANDARD=LVTTL;                                # C2
-#NET visualization_clock(1)    LOC="P117" | IOSTANDARD=LVTTL;                                # C3
-#NET visualization_d0(2)       LOC="P118" | IOSTANDARD=LVTTL;                                # C4
-#NET visualization_d1(2)       LOC="P119" | IOSTANDARD=LVTTL;                                # C5
-#NET visualization_latch(2)    LOC="P120" | IOSTANDARD=LVTTL;                                # C6
-#NET visualization_clock(2)    LOC="P121" | IOSTANDARD=LVTTL;                                # C7
+NET visualization_d0(1)       LOC="P114" | IOSTANDARD=LVTTL;                                # C0
+NET visualization_d1(1)       LOC="P115" | IOSTANDARD=LVTTL;                                # C1
+NET visualization_latch(1)    LOC="P116" | IOSTANDARD=LVTTL;                                # C2
+NET visualization_clock(1)    LOC="P117" | IOSTANDARD=LVTTL;                                # C3
+NET visualization_d0(2)       LOC="P118" | IOSTANDARD=LVTTL;                                # C4
+NET visualization_d1(2)       LOC="P119" | IOSTANDARD=LVTTL;                                # C5
+NET visualization_latch(2)    LOC="P120" | IOSTANDARD=LVTTL;                                # C6
+NET visualization_clock(2)    LOC="P121" | IOSTANDARD=LVTTL;                                # C7
 NET console_d0_oe(2)          LOC="P123" | IOSTANDARD=LVTTL;                                # C8
 NET console_d0(2)             LOC="P124" | IOSTANDARD=LVTTL;                                # C9
 NET console_d1_oe(2)          LOC="P126" | IOSTANDARD=LVTTL;                                # C10

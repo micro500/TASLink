@@ -4,12 +4,12 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity main is
-    Port ( data_in : in  STD_LOGIC;
-           data_out : out STD_LOGIC;
+    Port ( data_signal_in : in  STD_LOGIC;
+           data_signal_out : out STD_LOGIC;
            debug : out  STD_LOGIC_VECTOR(3 downto 0);
-           data_oe : out std_logic;
+           data_signal_oe : out std_logic;
            RX : in std_logic;
-           TXreal : out std_logic;
+           TX_raw : out std_logic;
            CLK : in  STD_LOGIC);
 end main;
 
@@ -20,7 +20,7 @@ architecture Behavioral of main is
   end component;
 
   component bit_detector is
-    Port ( data : in  STD_LOGIC;
+    Port ( data_signal : in  STD_LOGIC;
            new_bit : out  STD_LOGIC;
            bit_val : out  STD_LOGIC_VECTOR (1 downto 0);
            CLK : in  STD_LOGIC);
@@ -33,7 +33,7 @@ architecture Behavioral of main is
   end component;
   
   component bit_transmitter is
-    Port ( data_out : out  STD_LOGIC;
+    Port ( data_signal_out : out  STD_LOGIC;
            data_to_send : in STD_LOGIC_VECTOR(7 downto 0);
            need_stop_bit : in STD_LOGIC;
            stop_bit : in STD_LOGIC;
@@ -68,7 +68,7 @@ architecture Behavioral of main is
 
 
   
-  signal bit_signal : std_logic;
+  signal new_bit_flag : std_logic;
   
   signal data_in_f : std_logic;
   
@@ -83,8 +83,6 @@ architecture Behavioral of main is
   
   signal new_byte : std_logic := '0';
   
-  signal responding : std_logic := '0';
-  
   signal data_to_send : std_logic_vector(31 downto 0) := (others => '0');
   signal latched_data_to_send : std_logic_vector(31 downto 0) := (others => '0');
   signal tx_byte_id : integer range 0 to 3 := 0;
@@ -92,7 +90,7 @@ architecture Behavioral of main is
   signal transmitting : std_logic := '0';
   signal data_length : integer range 0 to 3 := 0;
   
-  signal data_tx : std_logic;
+  signal data_signal_from_tx : std_logic;
   signal data_to_tx : std_logic_vector(7 downto 0) := (others => '0');
   signal need_stop_bit : std_logic := '0';
   signal stop_bit : std_logic := '0';
@@ -137,20 +135,20 @@ architecture Behavioral of main is
   signal bit_tog : std_logic := '0';
 begin
 
-  data_filter: filter port map (signal_in => data_in,
+  data_filter: filter port map (signal_in => data_signal_in,
                                 clk => CLK,
                                 signal_out => data_in_f);
 
-  detector: bit_detector port map (data => data_in_f,
+  detector: bit_detector port map (data_signal => data_in_f,
                                    bit_val => new_bit_val,
-                                   new_bit => bit_signal,
+                                   new_bit => new_bit_flag,
                                    clk => clk);
                                    
-  bit_toggle: toggle port map (signal_in => bit_signal,
+  bit_toggle: toggle port map (signal_in => new_bit_flag,
                                signal_out => bit_tog);
                                
                                
-  tx1: bit_transmitter port map ( data_out => data_tx,
+  tx1: bit_transmitter port map ( data_signal_out => data_signal_from_tx,
                                  data_to_send => data_to_tx,
                                  need_stop_bit => need_stop_bit,
                                  stop_bit => stop_bit,
@@ -239,14 +237,14 @@ uart_recieve_btye: process(CLK)
     if (rising_edge(clk)) then
       new_byte <= '0';
       if (rx_mode = idle_mode) then
-        if (bit_signal = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
+        if (new_bit_flag = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
           rx_data <= "0000000" & new_bit_val(0);
           rx_timer <= 0;
           rx_mode <= receive_mode;
           bit_count <= 1;
         end if;
       else
-        if (bit_signal = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
+        if (new_bit_flag = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
           rx_data <= rx_data(6 downto 0) & new_bit_val(0);
           if (bit_count = 7) then
             rx_mode <= idle_mode;
@@ -362,14 +360,14 @@ uart_recieve_btye: process(CLK)
   debug(0) <= tx;
   debug(1) <= rx;
   debug(2) <= new_bit_val(0);
-  debug(3) <= data_tx;
+  debug(3) <= data_signal_from_tx;
   
-  data_oe <= oe_signal;
+  data_signal_oe <= oe_signal;
   
-  data_out <= data_tx;
-  oe_signal <= not tx_busy;
+  data_signal_out <= data_signal_from_tx;
+  oe_signal <= not transmitting;
   
-  txreal <= tx;
+  TX_raw <= tx;
 
 end Behavioral;
 

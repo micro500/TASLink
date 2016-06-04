@@ -4,7 +4,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity bit_detector is
-    Port ( data : in  STD_LOGIC;
+    Port ( data_signal : in  STD_LOGIC;
            new_bit : out  STD_LOGIC;
            bit_val : out  STD_LOGIC_VECTOR (1 downto 0);
            CLK : in  STD_LOGIC);
@@ -39,8 +39,8 @@ begin
   if (rising_edge(clk)) then
     new_bit_temp <= '0';
   
-    if (data = prev_data) then
-      if (data = '1') then
+    if (data_signal = prev_data) then
+      if (data_signal = '1') then
         if (detection_mode = wait1_mode) then
           if (bit_timer = three_us_exact) then
             -- output 1 
@@ -72,7 +72,7 @@ begin
       end if;
     else -- data /= prev_data
       -- Falling edge of data
-      if (prev_data = '1' and data = '0') then
+      if (prev_data = '1' and data_signal = '0') then
         if (detection_mode = wait1_mode) then
           -- Did we get something close enough?
           if (bit_timer >= three_us_min) then
@@ -97,7 +97,7 @@ begin
         bit_timer <= 0;
         
       -- Rising edge
-      elsif (prev_data = '0' and data = '1') then
+      elsif (prev_data = '0' and data_signal = '1') then
         if (bit_timer >= one_us_min and bit_timer <= one_us_max) then
           detection_mode <= wait1_mode;
         elsif (bit_timer >= two_us_min and bit_timer <= two_us_max) then
@@ -116,7 +116,7 @@ begin
       end if;
       
       -- Remember this new data value
-      prev_data <= data;
+      prev_data <= data_signal;
     end if;
   end if;
 end process;

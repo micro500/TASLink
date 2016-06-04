@@ -4,7 +4,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity bit_transmitter is
-    Port ( data_out : out  STD_LOGIC;
+    Port ( data_signal_out : out  STD_LOGIC;
            data_to_send : in STD_LOGIC_VECTOR(7 downto 0);
            need_stop_bit : in STD_LOGIC;
            stop_bit : in STD_LOGIC;
@@ -110,7 +110,7 @@ begin
   end if;
 end process;
 
-data_out <= data_signal;
+data_signal_out <= data_signal;
 tx_busy <= transmitting;
 
 end Behavioral;

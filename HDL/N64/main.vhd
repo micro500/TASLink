@@ -26,6 +26,14 @@ architecture Behavioral of main is
            CLK : in  STD_LOGIC);
   end component;
   
+  component byte_receiver is
+    Port ( new_bit : in  STD_LOGIC;
+           bit_val : in  STD_LOGIC_VECTOR (1 downto 0);
+           new_byte : out  STD_LOGIC;
+           byte_val : out  STD_LOGIC_VECTOR (7 downto 0);
+           CLK : in  STD_LOGIC);
+  end component;
+  
   component filter is
     Port ( signal_in : in  STD_LOGIC;
            clk : in  STD_LOGIC;
@@ -68,20 +76,14 @@ architecture Behavioral of main is
 
 
   
-  signal new_bit_flag : std_logic;
+  signal new_bit : std_logic;
   
   signal data_in_f : std_logic;
-  
-  type rx_modes is (idle_mode, receive_mode);
-  signal rx_mode : rx_modes := idle_mode;
-  
+    
   signal new_bit_val : std_logic_vector(1 downto 0);
-  
-  signal rx_data : std_logic_vector(7 downto 0);
-  signal rx_timer : integer range 0 to 160 := 0;
-  signal bit_count : integer range 0 to 7 := 0;
-  
+    
   signal new_byte : std_logic := '0';
+  signal rx_data : std_logic_vector (7 downto 0) := (others => '0');
   
   signal data_to_send : std_logic_vector(31 downto 0) := (others => '0');
   signal latched_data_to_send : std_logic_vector(31 downto 0) := (others => '0');
@@ -141,10 +143,15 @@ begin
 
   detector: bit_detector port map (data_signal => data_in_f,
                                    bit_val => new_bit_val,
-                                   new_bit => new_bit_flag,
+                                   new_bit => new_bit,
                                    clk => clk);
+  byte_rx: byte_receiver port map ( new_bit => new_bit,
+                                    bit_val => new_bit_val,
+                                    new_byte => new_byte,
+                                    byte_val => rx_data,
+                                    CLK => CLK);
                                    
-  bit_toggle: toggle port map (signal_in => new_bit_flag,
+  bit_toggle: toggle port map (signal_in => new_bit,
                                signal_out => bit_tog);
                                
                                
@@ -227,44 +234,7 @@ uart_recieve_btye: process(CLK)
 			end if;
     end if;
 	end process;
-  
-  
-  
-  
-  
-  process (clk)
-  begin
-    if (rising_edge(clk)) then
-      new_byte <= '0';
-      if (rx_mode = idle_mode) then
-        if (new_bit_flag = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
-          rx_data <= "0000000" & new_bit_val(0);
-          rx_timer <= 0;
-          rx_mode <= receive_mode;
-          bit_count <= 1;
-        end if;
-      else
-        if (new_bit_flag = '1' and (new_bit_val = "00" or new_bit_val = "01")) then
-          rx_data <= rx_data(6 downto 0) & new_bit_val(0);
-          if (bit_count = 7) then
-            rx_mode <= idle_mode;
-            new_byte <= '1';
-          else
-            bit_count <= bit_count + 1;
-            rx_timer <= 0;
-            rx_mode <= receive_mode;
-          end if;
-        else
-          if (rx_timer = 160) then
-            rx_mode <= idle_mode;
-          else
-            rx_timer <= rx_timer + 1;
-          end if;
-        end if;
-      end if;
-    end if;
-  end process;
-  
+    
   process (clk)
   begin
     if (rising_edge(clk)) then

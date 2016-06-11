@@ -40,7 +40,7 @@ architecture Behavioral of main is
            signal_out : out  STD_LOGIC);
   end component;
   
-  component bit_transmitter is
+  component byte_transmitter is
     Port ( data_signal_out : out  STD_LOGIC;
            data_to_send : in STD_LOGIC_VECTOR(7 downto 0);
            need_stop_bit : in STD_LOGIC;
@@ -74,8 +74,6 @@ architecture Behavioral of main is
            tx_out : out STD_LOGIC);
   end component;
 
-
-  
   signal new_bit : std_logic;
   
   signal data_in_f : std_logic;
@@ -155,7 +153,7 @@ begin
                                signal_out => bit_tog);
                                
                                
-  tx1: bit_transmitter port map ( data_signal_out => data_signal_from_tx,
+  tx1: byte_transmitter port map ( data_signal_out => data_signal_from_tx,
                                  data_to_send => data_to_tx,
                                  need_stop_bit => need_stop_bit,
                                  stop_bit => stop_bit,

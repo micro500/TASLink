@@ -105,7 +105,7 @@ begin
 end process;
   
 data_signal_out <= data_signal;
-tx_busy <= byte_transmitting_signal;
+tx_busy <= bit_transmitting_signal;
 tx_write_ack <= tx_write_ack_signal;
 
 end Behavioral;

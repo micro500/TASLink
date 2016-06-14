@@ -40,16 +40,6 @@ architecture Behavioral of main is
            signal_out : out  STD_LOGIC);
   end component;
   
-  component byte_transmitter is
-    Port ( data_signal_out : out  STD_LOGIC;
-           data_to_send : in STD_LOGIC_VECTOR(7 downto 0);
-           need_stop_bit : in STD_LOGIC;
-           stop_bit : in STD_LOGIC;
-           tx_busy : out STD_LOGIC;
-           tx_write : in  STD_LOGIC;
-           CLK : in  STD_LOGIC);
-  end component;
-
   component fifo is
     Port ( data_in : in  STD_LOGIC_VECTOR (31 downto 0);
            write_en : in  STD_LOGIC;
@@ -73,6 +63,19 @@ architecture Behavioral of main is
            tx_write : in STD_LOGIC;
            tx_out : out STD_LOGIC);
   end component;
+  
+  component n64_data_transmitter is
+    Port ( data_to_send : in  STD_LOGIC_VECTOR (255 downto 0);
+           data_length : in STD_LOGIC_VECTOR (5 downto 0);
+           tx_write : in  STD_LOGIC;
+           tx_write_ack : out  STD_LOGIC;
+           need_crc : in  STD_LOGIC;
+           need_stop_bit : in  STD_LOGIC;
+           stop_bit : in  STD_LOGIC;
+           data_out : out STD_LOGIC;
+           tx_busy : out STD_LOGIC;
+           CLK : in  STD_LOGIC);
+  end component;
 
   signal new_bit : std_logic;
   
@@ -83,20 +86,16 @@ architecture Behavioral of main is
   signal new_byte : std_logic := '0';
   signal rx_data : std_logic_vector (7 downto 0) := (others => '0');
   
-  signal data_to_send : std_logic_vector(31 downto 0) := (others => '0');
-  signal latched_data_to_send : std_logic_vector(31 downto 0) := (others => '0');
-  signal tx_byte_id : integer range 0 to 3 := 0;
-  signal transmit_new_data : std_logic := '0';
-  signal transmitting : std_logic := '0';
-  signal data_length : integer range 0 to 3 := 0;
+  signal data_length : std_logic_vector(5 downto 0) := "000000";
   
   signal data_signal_from_tx : std_logic;
-  signal data_to_tx : std_logic_vector(7 downto 0) := (others => '0');
+  signal data_to_tx : std_logic_vector(255 downto 0) := (others => '0');
   signal need_stop_bit : std_logic := '0';
   signal stop_bit : std_logic := '0';
   
   signal tx_busy : std_logic;
   signal tx_write : std_logic := '0';
+  signal tx_write_ack : std_logic;
   
   signal reply_delay_active : std_logic := '0';
   signal reply_delay_timer : integer range 0 to 96 := 0;
@@ -133,6 +132,8 @@ architecture Behavioral of main is
   signal setup_cmd_data : vector8(1 to 3) := (others => (others => '0'));
 
   signal bit_tog : std_logic := '0';
+  
+  signal need_crc : std_logic := '0';
 begin
 
   data_filter: filter port map (signal_in => data_signal_in,
@@ -152,15 +153,17 @@ begin
   bit_toggle: toggle port map (signal_in => new_bit,
                                signal_out => bit_tog);
                                
-                               
-  tx1: byte_transmitter port map ( data_signal_out => data_signal_from_tx,
-                                 data_to_send => data_to_tx,
-                                 need_stop_bit => need_stop_bit,
-                                 stop_bit => stop_bit,
-                                 tx_busy => tx_busy,
-                                 tx_write => tx_write,
-                                 CLK => clk);
-                               
+  datatx: n64_data_transmitter port map ( data_to_send => data_to_tx,
+                                          data_length => data_length,
+                                          tx_write => tx_write,
+                                          tx_write_ack => tx_write_ack,
+                                          need_crc => need_crc,
+                                          need_stop_bit => need_stop_bit,
+                                          stop_bit => stop_bit,
+                                          data_out => data_signal_from_tx,
+                                          tx_busy => tx_busy,
+                                          CLK => CLK);
+  
   buffers: fifo port map ( data_in => buffer_new_data,
                            write_en => buffer_write,
                            data_out => buffer_data,
@@ -236,25 +239,34 @@ uart_recieve_btye: process(CLK)
   process (clk)
   begin
     if (rising_edge(clk)) then
-      transmit_new_data <= '0';
+      tx_write <= '0';
       uart_write <= '0';
       buffer_read <= '0';
       if (reply_delay_active = '1') then
         if (reply_delay_timer = 96) then
           if (rx_data = "00000000") then
-            transmit_new_data <= '1';
-            data_to_send <= "00000101000000000000001000000000";
-            data_length <= 2;
+            tx_write <= '1';
+            data_to_tx <= (others => '0');
+            data_to_tx(255 downto 232) <= "000001010000000000000010";
+            data_length <= "000011";
+            need_stop_bit <= '1';
+            stop_bit <= '0';
             reply_delay_active <= '0';
           elsif (rx_data = "11111111") then
-            transmit_new_data <= '1';
-            data_to_send <= "10000010100000000000000100000000";
-            data_length <= 2;
+            tx_write <= '1';
+            data_to_tx <= (others => '0');
+            data_to_tx(255 downto 232) <= "100000101000000000000001";
+            data_length <= "000011";
+            need_stop_bit <= '1';
+            stop_bit <= '0';
             reply_delay_active <= '0';
           elsif (rx_data = "00000001") then
-            transmit_new_data <= '1';
-            data_to_send <= buffer_data;
-            data_length <= 3;
+            tx_write <= '1';
+            data_to_tx <= (others => '0');
+            data_to_tx(255 downto 224) <= buffer_data;
+            data_length <= "000100";
+            need_stop_bit <= '1';
+            stop_bit <= '0';
             reply_delay_active <= '0';
             buffer_read <= '1';
             uart_write <= '1';
@@ -263,68 +275,13 @@ uart_recieve_btye: process(CLK)
         else
           reply_delay_timer <= reply_delay_timer + 1;
         end if;
-      elsif (transmitting = '0' and new_byte = '1') then
+      elsif (tx_busy = '0' and new_byte = '1') then
         reply_delay_timer <= 0;
         reply_delay_active <= '1';
       end if;
     end if;
   end process;
   
-  process (clk)
-  begin
-    if (rising_edge(clk)) then
-      --tx_write <= '0';
-      
-      if (transmitting = '1') then
-        if (tx_write = '0' and tx_busy = '0') then
-          if (tx_byte_id = 0) then
-            data_to_tx <= latched_data_to_send(23 downto 16);
-            need_stop_bit <= '0';
-            tx_write <= '1';
-            
-            tx_byte_id <= 1;
-          elsif (tx_byte_id = 1) then
-            data_to_tx <= latched_data_to_send(15 downto 8);
-            if (data_length = 2) then
-              need_stop_bit <= '1';
-              stop_bit <= '0';
-            else
-              need_stop_bit <= '0';
-            end if;
-            
-            tx_write <= '1';
-            
-            tx_byte_id <= 2;
-          elsif (tx_byte_id = 2 and data_length = 3) then
-            data_to_tx <= latched_data_to_send(7 downto 0);
-            need_stop_bit <= '1';
-            stop_bit <= '0';
-            tx_write <= '1';
-            
-            tx_byte_id <= 3;
-          elsif ((tx_byte_id = 2 and data_length = 2) or tx_byte_id = 3) then
-            -- stop tx
-            transmitting <= '0';
-          end if;
-        end if;
-      elsif (transmit_new_data = '1') then
-        latched_data_to_send <= data_to_send;
-        
-        data_to_tx <= data_to_send(31 downto 24);
-        need_stop_bit <= '0';
-        tx_write <= '1';
-        
-        tx_byte_id <= 0;
-        
-        transmitting <= '1';
-      end if;
-      
-      if (tx_write = '1' and tx_busy = '1') then
-          tx_write <= '0';
-        end if;
-    end if;
-  end process;
-
   debug(0) <= tx;
   debug(1) <= rx;
   debug(2) <= new_bit_val(0);
@@ -333,7 +290,7 @@ uart_recieve_btye: process(CLK)
   data_signal_oe <= oe_signal;
   
   data_signal_out <= data_signal_from_tx;
-  oe_signal <= not transmitting;
+  oe_signal <= not tx_busy;
   
   TX_raw <= tx;
 

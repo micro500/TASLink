@@ -1,0 +1,26 @@
+## Prohibit the automatic placement of pins that are connected to VCC or GND for configuration.
+CONFIG PROHIBIT=P144;
+CONFIG PROHIBIT=P69;
+CONFIG PROHIBIT=P60;
+
+NET CLK               LOC="P94"  | IOSTANDARD=LVTTL | PERIOD=31.25ns;               # CLK
+#NET RX                LOC="P101" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST;          # RX
+#NET TX_raw            LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
+
+
+
+NET console_signal_oe    LOC="P133" | IOSTANDARD=LVTTL;                                # C14
+NET console_signal_out   LOC="P134" | IOSTANDARD=LVTTL;                                # C15
+
+
+
+NET console_signal_in    LOC="P74"  | IOSTANDARD=LVTTL;                                # B8
+NET debug(3)          LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
+NET debug(2)          LOC="P66"  | IOSTANDARD=LVTTL;                                # A5
+NET debug(1)          LOC="P67"  | IOSTANDARD=LVTTL;                                # A6
+NET debug(0)          LOC="P75"  | IOSTANDARD=LVTTL | CLOCK_DEDICATED_ROUTE;        # A7
+
+
+NET controller_signal_oe    LOC="P47" | IOSTANDARD=LVTTL;                                # B15
+NET controller_signal_out   LOC="P50" | IOSTANDARD=LVTTL;                                # B14
+NET controller_signal_in    LOC="P59" | IOSTANDARD=LVTTL;                                # B11

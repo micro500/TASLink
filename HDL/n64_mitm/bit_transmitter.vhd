@@ -4,12 +4,11 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity bit_transmitter is
-    Port ( data_signal_out : out  STD_LOGIC;
-           data_to_send : in STD_LOGIC_VECTOR(7 downto 0);
-           need_stop_bit : in STD_LOGIC;
-           stop_bit : in STD_LOGIC;
-           tx_busy : out STD_LOGIC;
-           tx_write : in  STD_LOGIC;
+    Port ( bit_value : in  STD_LOGIC_VECTOR (1 downto 0);
+           new_bit : in  STD_LOGIC;
+           new_bit_ack : out  STD_LOGIC;
+           transmitting : out  STD_LOGIC;
+           data_out : out STD_LOGIC;
            CLK : in  STD_LOGIC);
 end bit_transmitter;
 
@@ -18,29 +17,23 @@ architecture Behavioral of bit_transmitter is
   constant two_us_exact : integer := 64;
   constant three_us_exact : integer := 96;
 
-  signal latched_data : std_logic_vector(7 downto 0) := (others => '0');
-  signal latched_need_stop_bit : std_logic := '0';
-  signal latched_stop_bit : std_logic := '0';
+  signal data_signal : std_logic := '1';
+
+  signal transmitting_signal : std_logic := '0';
+  signal new_bit_ack_signal : std_logic := '0';
   
-  signal transmitting : std_logic := '0';
+  signal bit_in_progress : std_logic_vector(1 downto 0) := "00";
   
   signal bit_timer : integer range 0 to 104 := 0;
   
-  signal bit_id_in_progress : integer range 0 to 8 := 0;
-  signal bit_in_progress : std_logic_vector(1 downto 0) := "00";
-  
-  signal data_signal : std_logic := '1';
-  
   type modes is (idle_mode, high_mode, low_mode);
   signal tx_mode : modes := idle_mode;
-  
-  signal prev_tx_write : std_logic := '0';
 begin
-  
+
 process (clk)
 begin
   if (rising_edge(clk)) then
-    if (transmitting = '1') then
+    if (transmitting_signal = '1') then
       if (tx_mode = low_mode) then
         if ((bit_in_progress = "01" and bit_timer = one_us_exact) or (bit_in_progress = "00" and bit_timer = three_us_exact)) then
           -- Switch to high mode 
@@ -48,70 +41,73 @@ begin
           bit_timer <= 0;
           tx_mode <= high_mode;
         elsif ((bit_in_progress = "11" and bit_timer = one_us_exact) or (bit_in_progress = "10" and bit_timer = two_us_exact)) then
-          -- We're done transmitting
-          data_signal <= '1';
-          tx_mode <= idle_mode;
-          transmitting <= '0';
+          -- We're done transmitting this bit
+          -- Check if there is a new bit waiting
+          if (new_bit_ack_signal = '0' and new_bit = '1') then
+            transmitting_signal <= '1';
+            new_bit_ack_signal <= '1';
+            
+            bit_in_progress <= bit_value;
+            data_signal <= '0';
+            bit_timer <= 0;
+            
+            tx_mode <= low_mode;
+          else
+            data_signal <= '1';
+            tx_mode <= idle_mode;
+            transmitting_signal <= '0';
+          end if;
         else
           bit_timer <= bit_timer + 1;
         end if;
       elsif (tx_mode = high_mode) then
         if ((bit_in_progress = "01" and bit_timer = three_us_exact) or (bit_in_progress = "00" and bit_timer = one_us_exact)) then  
-          -- Go to the next bit
-          if (bit_id_in_progress = 7) then
-            if (latched_need_stop_bit = '1') then
-              data_signal <= '0';
-              bit_timer <= 0;
-              
-              bit_in_progress <= "1" & latched_stop_bit;
-              bit_id_in_progress <= 8;
-              tx_mode <= low_mode;
-            else
-              -- We're done transmitting
-              data_signal <= '1';
-              tx_mode <= idle_mode;
-              transmitting <= '0';
-            end if;
-          else
+          -- We're done transmitting this bit
+          -- Check if there is a new bit waiting
+          if (new_bit_ack_signal = '0' and new_bit = '1') then
+            transmitting_signal <= '1';
+            new_bit_ack_signal <= '1';
+            
+            bit_in_progress <= bit_value;
             data_signal <= '0';
             bit_timer <= 0;
-
-            bit_in_progress <= "0" & latched_data(7 - (bit_id_in_progress + 1));
-            bit_id_in_progress <= bit_id_in_progress + 1;
+            
             tx_mode <= low_mode;
+          else
+            data_signal <= '1';
+            tx_mode <= idle_mode;
+            transmitting_signal <= '0';
           end if;
         else
-           bit_timer <= bit_timer + 1;
+          bit_timer <= bit_timer + 1;
         end if;
+      else
+        -- We should never end up here
+        transmitting_signal <= '0';
       end if;
     else
-      if (prev_tx_write = '0' and tx_write = '1') then
-        latched_data <= data_to_send;
-        latched_need_stop_bit <= need_stop_bit;
-        latched_stop_bit <= stop_bit;
+      if (new_bit_ack_signal = '0' and new_bit = '1') then
+        transmitting_signal <= '1';
+        new_bit_ack_signal <= '1';
         
-        transmitting <= '1';
-        
-        -- Start sending first bit
+        bit_in_progress <= bit_value;
         data_signal <= '0';
         bit_timer <= 0;
         
-        bit_in_progress <= "0" & data_to_send(7);
-        bit_id_in_progress <= 0;
         tx_mode <= low_mode;
-        
-        prev_tx_write <= tx_write;
       end if;
     end if;
     
-    if (tx_write = '0') then
-      prev_tx_write <= tx_write;
+    -- Lower ack when new bit goes low
+    if (new_bit_ack_signal = '1' and new_bit = '0') then
+      new_bit_ack_signal <= '0';
     end if;
   end if;
 end process;
 
-data_signal_out <= data_signal;
-tx_busy <= transmitting;
+transmitting <= transmitting_signal;
+data_out <= data_signal;
+new_bit_ack <= new_bit_ack_signal;
 
 end Behavioral;
 

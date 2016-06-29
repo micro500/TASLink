@@ -3,11 +3,8 @@ CONTROLLER_Y = 1 #: y-cable [like half a multitap, usually not used by itself]
 CONTROLLER_MULTITAP = 2 #: multitap (Ports 1 and 2 only) [snes only]
 CONTROLLER_FOUR_SCORE = 3 #: four-score [nes-only peripheral that we don't do anything with]
 
-#TODO: support YAML
-
 class TASRun(object):
 
-   buffer = []
    customCommand = "Z" # Z is undefined
     
    def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name):
@@ -27,12 +24,10 @@ class TASRun(object):
          self.maxControllers = 8
       else:
          self.maxControllers = 1 #random default, but truly we need to support other formats
-
-      self.loadInput()
     
-   def loadInput(self):
+   def getInputBuffer(self):
       fh = open(self.inputFile, 'rb')
-      self.buffer = [] # ensure it is empty
+      buffer = [] # create a new empty buffer
       count = 0
       working_string = ""
 
@@ -58,13 +53,15 @@ class TASRun(object):
          count = count + 1 # note the odd increment timing to make the next check easier
          
          if count == max:
-            self.buffer.append(working_string)
+            buffer.append(working_string)
             count = 0
             # now ditch bytes from unused controllers as necessary
             for each in range(1,self.maxControllers-max):
                fh.read(1)
 
       fh.close()
+      
+      return buffer
      
      
    def setCustomCommand(self,custom_command):

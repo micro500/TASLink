@@ -4,6 +4,7 @@ import sys
 import time
 import cmd
 import threading
+import yaml
 import TASRun
 
 CONTROLLER_NORMAL = 0 # 1 controller
@@ -12,6 +13,8 @@ CONTROLLER_MULTITAP = 2 #: multitap (Ports 1 and 2 only) [snes only]
 CONTROLLER_FOUR_SCORE = 3 #: four-score [nes-only peripheral that we don't do anything with]
 
 baud = 2000000
+
+SETTINGS_FILE_NAME = "saved_runs.yaml"
 
 prebuffer = 60
 framecount1 = 0
@@ -26,6 +29,110 @@ customStreams = [0,0,0,0] # 1 when in use, 0 when available.
 customEvents = [0,0,0,0] # 1 when in use, 0 when available.
 tasRuns = []
 inputBuffers = []
+
+def setupCommunication(tasrun):
+   #claim the ports / lanes
+   for port in tasrun.portsList: 
+      claimConsolePort(port,tasrun.controllerType)
+
+   #begin serial communication
+   controllers = list('00000000')
+   #set controller lanes and ports
+   for port in tasrun.portsList:
+      #enable the console ports
+      command = "sp"
+      command = command + str(port) # should look like 'sp1' now
+      if TASLINK_CONNECTED:
+         ser.write(command + chr(tasrun.controllerType))
+      else:
+         print(command,tasrun.controllerType)
+      
+      #enable the controllers lines
+      limit = -1;
+      if tasrun.controllerType == CONTROLLER_NORMAL:
+         limit = 1
+      else:
+         limit = 2
+      for counter in range(0,limit):
+         command = "sc"
+         command = command + str(lanes[port][counter]) # should look like 'sc1' now
+         controllers[8-lanes[port][counter]] = '1' #this is used later for the custom stream command
+         # now we need to set the byte data accordingly
+         byte = list('00000000')
+         byte[0] = '1' # first set it plugged in
+         byte[1] = str(tasrun.overread)# next set overread value
+         # set controller size
+         if tasrun.controllerBits == 8:
+            pass #both bytes should be 0, so we're good
+         elif tasrun.controllerBits == 16:
+            byte[7] = '1'
+         elif tasrun.controllerBits == 24:
+            byte[6] = '1'
+         elif tasrun.controllerBits == 32:
+            byte[6] = '1'
+            byte[7] = '1'
+         bytestring = "".join(byte) # convert binary to string
+         if TASLINK_CONNECTED:
+            ser.write(command + chr(int(bytestring,2))) # send the sc command
+         else:
+            print(command,bytestring)
+
+   #setup custom stream command
+   index = -1
+   for counter in range(len(customStreams)):
+      if customStreams[counter] == 0:
+         index = counter
+         break
+   if index == -1:
+      print("ERROR: all four custom streams are full!")
+      #TODO: handle gracefully
+   else:
+      customStreams[index] = 1 # mark in use
+   command = 's';
+   if index == 0:
+      customCommand = 'A'
+   elif index == 1:
+      customCommand = 'B'
+   elif index == 2:
+      customCommand = 'C'
+   elif index == 3:
+      customCommand = 'D'
+   controllerMask = "".join(controllers) # convert binary to string
+   tasrun.setCustomCommand(customCommand) # save the letter this run uses
+   command = command + customCommand
+   if TASLINK_CONNECTED:
+      ser.write(command + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
+   else:
+      print(command, controllerMask)
+      
+   #setup events #s e lane_num byte controllerMask
+   index = -1
+   for counter in range(len(customEvents)):
+      if customEvents[counter] == 0:
+         index = counter
+         break
+   if index == -1:
+      print("ERROR: all four custom events are full!")
+      #TODO: handle gracefully
+   else:
+      customEvents[index] = 1 # mark in use
+   command = 'se' + str(index+1)
+   #do first byte
+   byte = list('{0:08b}'.format(int(tasrun.window/0.25))) # create padded bytestring, convert to list for manipulation
+   byte[0] = '1' # enable flag
+   bytestring = "".join(byte) # turn back into string
+   if TASLINK_CONNECTED:
+      ser.write(command + chr(int(bytestring,2)) + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
+   else:
+      print(command, bytestring, controllerMask)
+
+   # finnal, clear lanes and get ready to rock
+   if TASLINK_CONNECTED:
+      ser.write("R")
+   else:
+      print("R")
+
+   inputBuffers.append(tasrun.getInputBuffer()) # add the input buffer to a global list of input buffers
 
 def isConsolePortAvailable(port,type):
    # port check
@@ -77,14 +184,28 @@ def releaseConsolePort(port,type):
         
 
 #TODO: add commands: load, save, etc.
+# return false exits the function
+# return true exits the whole CLI
 class CLI(cmd.Cmd):
    """Simple command processor example."""
 
    def do_exit(self, data):
       return True
    
-   # return false exits the function
-   # return true exits the whole CLI
+   def do_save(self, data):
+      # print options
+      # ask which run to save
+      
+      #TODO: change the static 0 to the run the user selected
+      with open(SETTINGS_FILE_NAME, 'w') as f:
+         f.write(yaml.dump(tasRuns[0]))
+         
+   def do_load(self, data):
+      with open(SETTINGS_FILE_NAME, 'r') as f:
+         tasRuns.append(yaml.load(f))
+      
+      setupCommunication(tasRuns[-1])
+   
    def do_new(self, data):
       #get input file
       while True:
@@ -169,108 +290,7 @@ class CLI(cmd.Cmd):
       tasrun = TASRun.TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
       tasRuns.append(tasrun)
      
-      #claim the ports / lanes
-      for port in tasrun.portsList: 
-         claimConsolePort(port,tasrun.controllerType)
-     
-      #begin serial communication
-      controllers = list('00000000')
-      #set controller lanes and ports
-      for port in tasrun.portsList:
-         #enable the console ports
-         command = "sp"
-         command = command + str(port) # should look like 'sp1' now
-         if TASLINK_CONNECTED:
-            ser.write(command + chr(tasrun.controllerType))
-         else:
-            print(command,tasrun.controllerType)
-         
-         #enable the controllers lines
-         limit = -1;
-         if tasrun.controllerType == CONTROLLER_NORMAL:
-            limit = 1
-         else:
-            limit = 2
-         for counter in range(0,limit):
-            command = "sc"
-            command = command + str(lanes[port][counter]) # should look like 'sc1' now
-            controllers[8-lanes[port][counter]] = '1' #this is used later for the custom stream command
-            # now we need to set the byte data accordingly
-            byte = list('00000000')
-            byte[0] = '1' # first set it plugged in
-            byte[1] = str(tasrun.overread)# next set overread value
-            # set controller size
-            if tasrun.controllerBits == 8:
-               pass #both bytes should be 0, so we're good
-            elif tasrun.controllerBits == 16:
-               byte[7] = '1'
-            elif tasrun.controllerBits == 24:
-               byte[6] = '1'
-            elif tasrun.controllerBits == 32:
-               byte[6] = '1'
-               byte[7] = '1'
-            bytestring = "".join(byte) # convert binary to string
-            if TASLINK_CONNECTED:
-               ser.write(command + chr(int(bytestring,2))) # send the sc command
-            else:
-               print(command,bytestring)
-
-      #setup custom stream command
-      index = -1
-      for counter in range(len(customStreams)):
-         if customStreams[counter] == 0:
-            index = counter
-            break
-      if index == -1:
-         print("ERROR: all four custom streams are full!")
-         #TODO: handle gracefully
-      else:
-         customStreams[index] = 1 # mark in use
-      command = 's';
-      if index == 0:
-         customCommand = 'A'
-      elif index == 1:
-         customCommand = 'B'
-      elif index == 2:
-         customCommand = 'C'
-      elif index == 3:
-         customCommand = 'D'
-      controllerMask = "".join(controllers) # convert binary to string
-      tasrun.setCustomCommand(customCommand) # save the letter this run uses
-      command = command + customCommand
-      if TASLINK_CONNECTED:
-         ser.write(command + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
-      else:
-         print(command, controllerMask)
-         
-      #setup events #s e lane_num byte controllerMask
-      index = -1
-      for counter in range(len(customEvents)):
-         if customEvents[counter] == 0:
-            index = counter
-            break
-      if index == -1:
-         print("ERROR: all four custom events are full!")
-         #TODO: handle gracefully
-      else:
-         customEvents[index] = 1 # mark in use
-      command = 'se' + str(index+1)
-      #do first byte
-      byte = list('{0:08b}'.format(int(tasrun.window/0.25))) # create padded bytestring, convert to list for manipulation
-      byte[0] = '1' # enable flag
-      bytestring = "".join(byte) # turn back into string
-      if TASLINK_CONNECTED:
-         ser.write(command + chr(int(bytestring,2)) + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
-      else:
-         print(command, bytestring, controllerMask)
-
-      # finnal, clear lanes and get ready to rock
-      if TASLINK_CONNECTED:
-         ser.write("R")
-      else:
-         print("R")
-
-      inputBuffers.append(tasrun.buffer) # add the input buffer to a global list of input buffers
+      setupCommunication(tasrun)
          
    def do_EOF(self, line):
       return True

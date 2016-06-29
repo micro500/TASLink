@@ -156,30 +156,14 @@ def isConsolePortAvailable(port,type):
 def claimConsolePort(port,type):
    if consolePorts[port] == 0:
       consolePorts[port] = 1 # claim it
-      if type == CONTROLLER_NORMAL:
-         consoleLanes[lanes[port][0]] = 1
-      elif type == CONTROLLER_MULTITAP:
-         consoleLanes[lanes[port][0]] = 1
-         consoleLanes[lanes[port][1]] = 1
-         consoleLanes[lanes[port][2]] = 1
-         consoleLanes[lanes[port][3]] = 1
-      else:
-         consoleLanes[lanes[port][0]] = 1
-         consoleLanes[lanes[port][1]] = 1
+      for lane in lanes[port]:
+         consoleLanes[lane] = 1
 
 def releaseConsolePort(port,type):
    if consolePorts[port] == 1:
       consolePorts[port] = 0
-      if type == CONTROLLER_NORMAL:
-         consoleLanes[lanes[port][0]] = 0
-      elif type == CONTROLLER_MULTITAP:
-         consoleLanes[lanes[port][0]] = 0
-         consoleLanes[lanes[port][1]] = 0
-         consoleLanes[lanes[port][2]] = 0
-         consoleLanes[lanes[port][3]] = 0
-      else:
-         consoleLanes[lanes[port][0]] = 0
-         consoleLanes[lanes[port][1]] = 0
+      for lane in lanes[port]:
+         consoleLanes[lane] = 0
         
 
 #TODO: add commands: load, save, etc.

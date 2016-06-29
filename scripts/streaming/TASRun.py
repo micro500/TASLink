@@ -34,9 +34,9 @@ class TASRun(object):
       max = int(self.controllerBits/8) * self.numControllers # bytes * number of controllers
       # next we take controller type into account
       if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
-         max = max * 2
+         max *= 2
       elif self.controllerType == CONTROLLER_MULTITAP:
-         max = max * 4
+         max *= 4
          
       while True:
          if count == 0:
@@ -48,10 +48,10 @@ class TASRun(object):
             break
 
          b = ~ord(b) & 0xFF # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-         working_string = working_string + chr(b) # add our byte data
-         
-         count = count + 1 # note the odd increment timing to make the next check easier
-         
+         working_string += chr(b)  # add our byte data
+
+         count += 1  # note the odd increment timing to make the next check easier
+
          if count == max:
             buffer.append(working_string)
             count = 0
@@ -60,7 +60,7 @@ class TASRun(object):
                fh.read(1)
 
       fh.close()
-      
+
       return buffer
      
      

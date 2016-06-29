@@ -1,7 +1,6 @@
 import os
 import serial
 import sys
-import time
 import cmd
 import threading
 import yaml
@@ -41,21 +40,19 @@ def setupCommunication(tasrun):
    for port in tasrun.portsList:
       #enable the console ports
       command = "sp"
-      command = command + str(port) # should look like 'sp1' now
+      command += str(port) # should look like 'sp1' now
       if TASLINK_CONNECTED:
          ser.write(command + chr(tasrun.controllerType))
       else:
          print(command,tasrun.controllerType)
       
       #enable the controllers lines
-      limit = -1;
       if tasrun.controllerType == CONTROLLER_NORMAL:
          limit = 1
       else:
          limit = 2
-      for counter in range(0,limit):
-         command = "sc"
-         command = command + str(lanes[port][counter]) # should look like 'sc1' now
+      for counter in range(limit):
+         command = "sc" + str(lanes[port][counter]) # should look like 'sc1' now
          controllers[8-lanes[port][counter]] = '1' #this is used later for the custom stream command
          # now we need to set the byte data accordingly
          byte = list('00000000')
@@ -88,18 +85,11 @@ def setupCommunication(tasrun):
       #TODO: handle gracefully
    else:
       customStreams[index] = 1 # mark in use
-   command = 's';
-   if index == 0:
-      customCommand = 'A'
-   elif index == 1:
-      customCommand = 'B'
-   elif index == 2:
-      customCommand = 'C'
-   elif index == 3:
-      customCommand = 'D'
+   command = 's'
+   customCommand = 'ABCD'[index]
    controllerMask = "".join(controllers) # convert binary to string
    tasrun.setCustomCommand(customCommand) # save the letter this run uses
-   command = command + customCommand
+   command += customCommand
    if TASLINK_CONNECTED:
       ser.write(command + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
    else:
@@ -146,10 +136,10 @@ def isConsolePortAvailable(port,type):
    elif type == CONTROLLER_MULTITAP:
       if port != 1 or port != 2: # multitap only works on ports 1 and 2
          return False
-      if consoleLanes[lanes[port][0]] != 0 or consoleLanes[lanes[port][1]] != 0 or consoleLanes[lanes[port][2]] != 0 or consoleLanes[lanes[port][3]] != 0:
+      if any(consoleLanes[lanes[port][x]] for x in range(4)):
          return False
    else: # y-cable or four-score
-      if consoleLanes[lanes[port][0]] != 0 or consoleLanes[lanes[port][1]] != 0:
+      if any(consoleLanes[lanes[port][x]] for x in range(2)):
          return False
    
    return True # passed all checks
@@ -157,30 +147,14 @@ def isConsolePortAvailable(port,type):
 def claimConsolePort(port,type):
    if consolePorts[port] == 0:
       consolePorts[port] = 1 # claim it
-      if type == CONTROLLER_NORMAL:
-         consoleLanes[lanes[port][0]] = 1
-      elif type == CONTROLLER_MULTITAP:
-         consoleLanes[lanes[port][0]] = 1
-         consoleLanes[lanes[port][1]] = 1
-         consoleLanes[lanes[port][2]] = 1
-         consoleLanes[lanes[port][3]] = 1
-      else:
-         consoleLanes[lanes[port][0]] = 1
-         consoleLanes[lanes[port][1]] = 1
+      for lane in lanes[port]:
+         consoleLanes[lane] = 1
 
 def releaseConsolePort(port,type):
    if consolePorts[port] == 1:
       consolePorts[port] = 0
-      if type == CONTROLLER_NORMAL:
-         consoleLanes[lanes[port][0]] = 0
-      elif type == CONTROLLER_MULTITAP:
-         consoleLanes[lanes[port][0]] = 0
-         consoleLanes[lanes[port][1]] = 0
-         consoleLanes[lanes[port][2]] = 0
-         consoleLanes[lanes[port][3]] = 0
-      else:
-         consoleLanes[lanes[port][0]] = 0
-         consoleLanes[lanes[port][1]] = 0
+      for lane in lanes[port]:
+         consoleLanes[lane] = 0
         
 
 #TODO: add commands: load, save, etc.
@@ -213,22 +187,21 @@ class CLI(cmd.Cmd):
          if not os.path.isfile(fileName):
             sys.stderr.write('ERROR: File does not exist!\n')
          else:
-            break;
+            break
       #get ports to use
       while True:
          try:
             breakout = True
             portsList = raw_input("Which physical controller port numbers will you use (1-4, spaces between port numbers)? ")
-            portsList = str.split(portsList) # splits by spaces by default
+            portsList = map(int, portsList.split()) # splits by spaces, then convert to int
             numControllers = len(portsList)
-            for x in range(len(portsList)):
-               portsList[x] = int(portsList[x]) # convert each one to an int
-               if portsList[x] < 1 or portsList[x] > 4:
-                  print("ERROR: Port out of range... "+str(portsList[x])+" is not between (1-4)!\n")
+            for port in portsList:
+               if port not in range(1,5): # Top of range is exclusive
+                  print("ERROR: Port out of range... "+str(port)+" is not between (1-4)!\n")
                   breakout = False
                   break
-               if not isConsolePortAvailable(portsList[x],1): # check assuming one lane at first
-                  print("ERROR: The main data lane for port "+str(portsList[x])+" is already in use!\n")
+               if not isConsolePortAvailable(port,1): # check assuming one lane at first
+                  print("ERROR: The main data lane for port "+str(port)+" is already in use!\n")
                   breakout = False
                   break
             if any(portsList.count(x) > 1 for x in portsList): # check duplciates
@@ -242,7 +215,7 @@ class CLI(cmd.Cmd):
       while True:
          breakout = True
          controllerType = raw_input("What controller type does this run use (normal, y, multitap, four-score)? ")
-         if controllerType.lower() != "normal" and controllerType.lower() != "y" and controllerType.lower() != "multitap" and controllerType.lower() != "four-score":
+         if controllerType.lower() not in ["normal", "y", "multitap", "four-score"]:
             print("ERROR: Invalid controller type!\n")
             continue
             
@@ -261,14 +234,14 @@ class CLI(cmd.Cmd):
                breakout = False
                
          if breakout:
-            break;
+            break
       #8, 16, 24, or 32 bit
       while True:
          controllerBits = int(raw_input("How many bits of data per controller (8, 16, 24, or 32)? "))
          if controllerBits != 8 and controllerBits != 16 and controllerBits != 24 and controllerBits != 32:
             print("ERROR: Bits must be either 8, 16, 24, or 32!\n")
          else:
-            break;
+            break
       #overread value
       while True:
          overread = int(raw_input("Overread value (0 or 1... if unsure choose 0)? "))
@@ -276,7 +249,7 @@ class CLI(cmd.Cmd):
             print("ERROR: Overread be either 0 or 1!\n")
             continue
          else:
-            break;
+            break
       #window mode 0-15.75ms
       while True:
          window = float(raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? "))
@@ -285,7 +258,7 @@ class CLI(cmd.Cmd):
          elif window%0.25 != 0:
             print("ERROR: Window is not a multiple of 0.25!\n")
          else:
-            break;
+            break
       #create TASRun object and assign it to our global, defined above
       tasrun = TASRun.TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
       tasRuns.append(tasrun)
@@ -306,7 +279,7 @@ if TASLINK_CONNECTED:
    try:
       ser = serial.Serial(sys.argv[1], baud)
    except SerialException:
-      print ("ERROR: the specificied interface ("+sys.argv[1]+") is in use")
+      print ("ERROR: the specified interface ("+sys.argv[1]+") is in use")
       sys.exit(0)
 
 #start CLI in its own thread

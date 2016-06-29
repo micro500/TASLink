@@ -1,7 +1,6 @@
 import os
 import serial
 import sys
-import time
 import cmd
 import threading
 import yaml
@@ -48,7 +47,6 @@ def setupCommunication(tasrun):
          print(command,tasrun.controllerType)
       
       #enable the controllers lines
-      limit = -1
       if tasrun.controllerType == CONTROLLER_NORMAL:
          limit = 1
       else:

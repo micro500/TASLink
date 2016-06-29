@@ -41,7 +41,7 @@ def setupCommunication(tasrun):
    for port in tasrun.portsList:
       #enable the console ports
       command = "sp"
-      command = command + str(port) # should look like 'sp1' now
+      command += str(port) # should look like 'sp1' now
       if TASLINK_CONNECTED:
          ser.write(command + chr(tasrun.controllerType))
       else:
@@ -53,9 +53,8 @@ def setupCommunication(tasrun):
          limit = 1
       else:
          limit = 2
-      for counter in range(0,limit):
-         command = "sc"
-         command = command + str(lanes[port][counter]) # should look like 'sc1' now
+      for counter in range(limit):
+         command = "sc" + str(lanes[port][counter]) # should look like 'sc1' now
          controllers[8-lanes[port][counter]] = '1' #this is used later for the custom stream command
          # now we need to set the byte data accordingly
          byte = list('00000000')
@@ -99,7 +98,7 @@ def setupCommunication(tasrun):
       customCommand = 'D'
    controllerMask = "".join(controllers) # convert binary to string
    tasrun.setCustomCommand(customCommand) # save the letter this run uses
-   command = command + customCommand
+   command += customCommand
    if TASLINK_CONNECTED:
       ser.write(command + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
    else:

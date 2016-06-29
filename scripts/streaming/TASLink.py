@@ -4,10 +4,9 @@ import sys
 import cmd
 import threading
 import yaml
-import TASRun
 
 CONTROLLER_NORMAL = 0 # 1 controller
-CONTROLLER_Y = 1 #: y-cable [like half a multitap, usually not used by itself]
+CONTROLLER_Y = 1 #: y-cable [like half a multitap]
 CONTROLLER_MULTITAP = 2 #: multitap (Ports 1 and 2 only) [snes only]
 CONTROLLER_FOUR_SCORE = 3 #: four-score [nes-only peripheral that we don't do anything with]
 
@@ -28,6 +27,70 @@ customStreams = [0,0,0,0] # 1 when in use, 0 when available.
 customEvents = [0,0,0,0] # 1 when in use, 0 when available.
 tasRuns = []
 inputBuffers = []
+
+class TASRun(object):
+
+   customCommand = "Z" # Z is undefined
+    
+   def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name):
+      self.numControllers = num_controllers
+      self.portsList = ports_list
+      self.controllerType = controller_type
+      self.controllerBits = controller_bits
+      self.overread = ovr
+      self.window = wndw
+      self.inputFile = file_name
+
+      self.fileExtension = file_name.split(".")[-1] # pythonic last elemnt of a list/string/array
+
+      if self.fileExtension == 'r08':
+         self.maxControllers = 2
+      elif self.fileExtension == 'r16':
+         self.maxControllers = 8
+      else:
+         self.maxControllers = 1 #random default, but truly we need to support other formats
+    
+   def getInputBuffer(self):
+      fh = open(self.inputFile, 'rb')
+      buffer = [] # create a new empty buffer
+      count = 0
+      working_string = ""
+
+      max = int(self.controllerBits/8) * self.numControllers # bytes * number of controllers
+      # next we take controller type into account
+      if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
+         max *= 2
+      elif self.controllerType == CONTROLLER_MULTITAP:
+         max *= 4
+         
+      while True:
+         if count == 0:
+            working_string = self.customCommand
+
+         b = fh.read(1) # read one byte
+
+         if len(b) == 0: # fail case
+            break
+
+         b = ~ord(b) & 0xFF # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+         working_string += chr(b)  # add our byte data
+
+         count += 1  # note the odd increment timing to make the next check easier
+
+         if count == max:
+            buffer.append(working_string)
+            count = 0
+            # now ditch bytes from unused controllers as necessary
+            for each in range(1,self.maxControllers-max):
+               fh.read(1)
+
+      fh.close()
+
+      return buffer
+     
+     
+   def setCustomCommand(self,custom_command):
+     self.customCommand = custom_command
 
 def setupCommunication(tasrun):
    #claim the ports / lanes
@@ -131,7 +194,7 @@ def isConsolePortAvailable(port,type):
    
    # lane check
    if type == CONTROLLER_NORMAL:
-      if consoleLanes[lanes[port][0]] != 0:
+      if consoleLanes[lanes[port][0]]:
          return False
    elif type == CONTROLLER_MULTITAP:
       if port != 1 or port != 2: # multitap only works on ports 1 and 2
@@ -147,40 +210,75 @@ def isConsolePortAvailable(port,type):
 def claimConsolePort(port,type):
    if consolePorts[port] == 0:
       consolePorts[port] = 1 # claim it
-      for lane in lanes[port]:
-         consoleLanes[lane] = 1
+      if type == CONTROLLER_NORMAL:
+         consoleLanes[lanes[port][0]] = 1
+      elif type == CONTROLLER_MULTITAP:
+         for lane in lanes[port]:
+            consoleLanes[lane] = 1
+      else:
+          consoleLanes[lanes[port][0]] = 1		
+          consoleLanes[lanes[port][1]] = 1
 
 def releaseConsolePort(port,type):
    if consolePorts[port] == 1:
       consolePorts[port] = 0
-      for lane in lanes[port]:
-         consoleLanes[lane] = 0
-        
+      if type == CONTROLLER_NORMAL:
+         consoleLanes[lanes[port][0]] = 0
+      elif type == CONTROLLER_MULTITAP:
+         for lane in lanes[port]:
+            consoleLanes[lane] = 0
+      else:
+          consoleLanes[lanes[port][0]] = 0
+          consoleLanes[lanes[port][1]] = 0
 
 #TODO: add commands: load, save, etc.
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
-   """Simple command processor example."""
 
    def do_exit(self, data):
+      """Not goodbyte but rather so long for a while"""
       return True
    
    def do_save(self, data):
+      """Save a run to a file"""
       # print options
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      self.do_list(None)
       # ask which run to save
-      
-      #TODO: change the static 0 to the run the user selected
-      with open(SETTINGS_FILE_NAME, 'w') as f:
-         f.write(yaml.dump(tasRuns[0]))
+      runID = int(raw_input("Which run # do you want to save? "))
+      filename = raw_input("Please enter filename: ")
+
+      with open(filename, 'w') as f:
+         f.write(yaml.dump(tasRuns[runID-1]))
          
    def do_load(self, data):
-      with open(SETTINGS_FILE_NAME, 'r') as f:
+      """Load a run from a file"""
+      filename = raw_input("Please enter the file to load: ")
+      if not os.path.isfile(filename):
+         print("ERROR: File does not exist!")
+         return False
+      with open(filename, 'r') as f:
          tasRuns.append(yaml.load(f))
       
+      #TODO: CHECK FOR PORT CONFLICTS ON LOAD!!!!!
+      
       setupCommunication(tasRuns[-1])
+      
+   def do_list(self, data):
+      """List all active runs"""
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      for index,run in enumerate(tasRuns):
+         print("Run #"+str(index+1)+": ")
+         print yaml.dump(run)
+      pass
    
    def do_new(self, data):
+      """Create a new run with parameters specified in the terminal"""
       #get input file
       while True:
          fileName = raw_input("What is the input file (path to filename) ? ")
@@ -200,7 +298,7 @@ class CLI(cmd.Cmd):
                   print("ERROR: Port out of range... "+str(port)+" is not between (1-4)!\n")
                   breakout = False
                   break
-               if not isConsolePortAvailable(port,1): # check assuming one lane at first
+               if not isConsolePortAvailable(port,CONTROLLER_NORMAL): # check assuming one lane at first
                   print("ERROR: The main data lane for port "+str(port)+" is already in use!\n")
                   breakout = False
                   break
@@ -260,12 +358,13 @@ class CLI(cmd.Cmd):
          else:
             break
       #create TASRun object and assign it to our global, defined above
-      tasrun = TASRun.TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
+      tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
       tasRuns.append(tasrun)
      
       setupCommunication(tasrun)
          
    def do_EOF(self, line):
+      """/wave"""
       return True
 
    def postloop(self):

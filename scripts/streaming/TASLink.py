@@ -85,15 +85,8 @@ def setupCommunication(tasrun):
       #TODO: handle gracefully
    else:
       customStreams[index] = 1 # mark in use
-   command = 's';
-   if index == 0:
-      customCommand = 'A'
-   elif index == 1:
-      customCommand = 'B'
-   elif index == 2:
-      customCommand = 'C'
-   elif index == 3:
-      customCommand = 'D'
+   command = 's'
+   customCommand = 'ABCD'[index]
    controllerMask = "".join(controllers) # convert binary to string
    tasrun.setCustomCommand(customCommand) # save the letter this run uses
    command += customCommand
@@ -143,10 +136,10 @@ def isConsolePortAvailable(port,type):
    elif type == CONTROLLER_MULTITAP:
       if port != 1 or port != 2: # multitap only works on ports 1 and 2
          return False
-      if consoleLanes[lanes[port][0]] != 0 or consoleLanes[lanes[port][1]] != 0 or consoleLanes[lanes[port][2]] != 0 or consoleLanes[lanes[port][3]] != 0:
+      if any(consoleLanes[lanes[port][x]] for x in range(4)):
          return False
    else: # y-cable or four-score
-      if consoleLanes[lanes[port][0]] != 0 or consoleLanes[lanes[port][1]] != 0:
+      if any(consoleLanes[lanes[port][x]] for x in range(2)):
          return False
    
    return True # passed all checks
@@ -200,16 +193,15 @@ class CLI(cmd.Cmd):
          try:
             breakout = True
             portsList = raw_input("Which physical controller port numbers will you use (1-4, spaces between port numbers)? ")
-            portsList = str.split(portsList) # splits by spaces by default
+            portsList = map(int, portsList.split()) # splits by spaces, then convert to int
             numControllers = len(portsList)
-            for x in range(len(portsList)):
-               portsList[x] = int(portsList[x]) # convert each one to an int
-               if portsList[x] < 1 or portsList[x] > 4:
-                  print("ERROR: Port out of range... "+str(portsList[x])+" is not between (1-4)!\n")
+            for port in portsList:
+               if port not in range(1,5): # Top of range is exclusive
+                  print("ERROR: Port out of range... "+str(port)+" is not between (1-4)!\n")
                   breakout = False
                   break
-               if not isConsolePortAvailable(portsList[x],1): # check assuming one lane at first
-                  print("ERROR: The main data lane for port "+str(portsList[x])+" is already in use!\n")
+               if not isConsolePortAvailable(port,1): # check assuming one lane at first
+                  print("ERROR: The main data lane for port "+str(port)+" is already in use!\n")
                   breakout = False
                   break
             if any(portsList.count(x) > 1 for x in portsList): # check duplciates
@@ -223,7 +215,7 @@ class CLI(cmd.Cmd):
       while True:
          breakout = True
          controllerType = raw_input("What controller type does this run use (normal, y, multitap, four-score)? ")
-         if controllerType.lower() != "normal" and controllerType.lower() != "y" and controllerType.lower() != "multitap" and controllerType.lower() != "four-score":
+         if controllerType.lower() not in ["normal", "y", "multitap", "four-score"]:
             print("ERROR: Invalid controller type!\n")
             continue
             
@@ -287,7 +279,7 @@ if TASLINK_CONNECTED:
    try:
       ser = serial.Serial(sys.argv[1], baud)
    except SerialException:
-      print ("ERROR: the specificied interface ("+sys.argv[1]+") is in use")
+      print ("ERROR: the specified interface ("+sys.argv[1]+") is in use")
       sys.exit(0)
 
 #start CLI in its own thread

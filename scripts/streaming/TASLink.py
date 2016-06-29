@@ -48,7 +48,7 @@ def setupCommunication(tasrun):
          print(command,tasrun.controllerType)
       
       #enable the controllers lines
-      limit = -1;
+      limit = -1
       if tasrun.controllerType == CONTROLLER_NORMAL:
          limit = 1
       else:
@@ -213,7 +213,7 @@ class CLI(cmd.Cmd):
          if not os.path.isfile(fileName):
             sys.stderr.write('ERROR: File does not exist!\n')
          else:
-            break;
+            break
       #get ports to use
       while True:
          try:
@@ -261,14 +261,14 @@ class CLI(cmd.Cmd):
                breakout = False
                
          if breakout:
-            break;
+            break
       #8, 16, 24, or 32 bit
       while True:
          controllerBits = int(raw_input("How many bits of data per controller (8, 16, 24, or 32)? "))
          if controllerBits != 8 and controllerBits != 16 and controllerBits != 24 and controllerBits != 32:
             print("ERROR: Bits must be either 8, 16, 24, or 32!\n")
          else:
-            break;
+            break
       #overread value
       while True:
          overread = int(raw_input("Overread value (0 or 1... if unsure choose 0)? "))
@@ -276,7 +276,7 @@ class CLI(cmd.Cmd):
             print("ERROR: Overread be either 0 or 1!\n")
             continue
          else:
-            break;
+            break
       #window mode 0-15.75ms
       while True:
          window = float(raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? "))
@@ -285,7 +285,7 @@ class CLI(cmd.Cmd):
          elif window%0.25 != 0:
             print("ERROR: Window is not a multiple of 0.25!\n")
          else:
-            break;
+            break
       #create TASRun object and assign it to our global, defined above
       tasrun = TASRun.TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
       tasRuns.append(tasrun)

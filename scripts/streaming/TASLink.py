@@ -242,7 +242,22 @@ class CLI(cmd.Cmd):
 
       with open(filename, 'w') as f:
          f.write(yaml.dump(tasRuns[runID-1]))
-         
+      
+      print("Save complete!")
+
+   def do_reset(self, data):
+      """Reset an active run back to frame 0"""
+      # print options
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      self.do_list(None)
+      runID = int(raw_input("Which run # do you want to reset? "))
+      index = runID-1
+      frameCounts[index] = 0
+      send_frames(index,prebuffer) # re-pre-buffer-!
+      print("Reset complete!")
+      
    def do_remove(self, data):
       """Remove one of the current runs"""
       # print options
@@ -265,6 +280,8 @@ class CLI(cmd.Cmd):
       del tasRuns[index]
       # TODO: is there a need to update TASLink and let it know the controllers are disconncted?
       # Or is it ok to have it be simply overriden later?
+      
+      print("Run has been successfully removed!")
 
    def do_load(self, data):
       """Load a run from a file"""
@@ -280,6 +297,8 @@ class CLI(cmd.Cmd):
          return False
       tasRuns.append(run)
       setupCommunication(tasRuns[-1])
+      
+      print("Run has been successfully loaded!")
       
    def do_list(self, data):
       """List all active runs"""

@@ -240,8 +240,8 @@ class CLI(cmd.Cmd):
       with open(filename, 'w') as f:
          f.write(yaml.dump(tasRuns[runID-1]))
          
-   def do_end(self, data):
-      """End one of the current runs"""
+   def do_remove(self, data):
+      """Remove one of the current runs"""
       # print options
       if not tasRuns:
          print("No currently active runs.")
@@ -428,7 +428,7 @@ if TASLINK_CONNECTED == 1:
       if ord(c)-102 in range(len(tasRuns)):
          send_frames(ord(c)-102,1) # 'f' (EVENT 1) maps to 0, 'g' (EVENT 1) maps to 1, etc.
       else:
-         print (ord(c))
+         print ("TASLink says: "+ord(c))
 
 t.join() # block wait until CLI thread terminats
 sys.exit(0) # exit cleanly

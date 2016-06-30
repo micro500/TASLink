@@ -7,6 +7,16 @@ import yaml
 
 import time # used for sleeps in debugging
 
+import rlcompleter,readline # to add support for tab completion of commands
+import glob
+
+def complete(text, state):
+   return (glob.glob(text+'*')+[None])[state]
+
+readline.set_completer_delims(' \t\n')
+readline.parse_and_bind("tab: complete")
+readline.set_completer(complete)
+
 CONTROLLER_NORMAL = 0 # 1 controller
 CONTROLLER_Y = 1 #: y-cable [like half a multitap]
 CONTROLLER_MULTITAP = 2 #: multitap (Ports 1 and 2 only) [snes only]
@@ -224,6 +234,11 @@ def releaseConsolePort(port,type):
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
+
+   use_rawinput = False # enables tab completion of raw_input. seems to break autocompletion of the supported commands
+   
+   def emptyline(self):
+      return False
 
    def do_exit(self, data):
       """Not goodbyte but rather so long for a while"""

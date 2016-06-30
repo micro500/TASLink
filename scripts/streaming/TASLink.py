@@ -167,8 +167,11 @@ def setupCommunication(tasrun):
       ser.write("R")
    else:
       print("R")
+   
+   if TASLINK_CONNECTED:   
+      ser.write(customCommand+chr(0)) # add an extra dummy frame in the beginning?
 
-   inputBuffers.append(tasrun.getInputBuffer(MASKS[index])) # add the input buffer to a global list of input buffers
+   inputBuffers.append(tasrun.getInputBuffer(customCommand)) # add the input buffer to a global list of input buffers
 
 def isConsolePortAvailable(port,type):
    # port check
@@ -377,10 +380,6 @@ while not inputBuffers: # wait until we have at least one run ready to go
    pass
 
 def send_frames(index,amount):
-   global frameCounts
-   global ser
-   global inputBuffers
-   
    framecount = frameCounts[index]
 
    if TASLINK_CONNECTED == 1:
@@ -388,7 +387,7 @@ def send_frames(index,amount):
    else:
       print("DATA SENT: ",''.join(inputBuffers[index][framecount:(framecount+amount)]))
      
-   framecount = framecount + amount
+   frameCounts[index] += amount
 
 #t3h urn
 
@@ -402,9 +401,9 @@ if TASLINK_CONNECTED == 1:
 
       c = ser.read()
 
-      if c == 'f' or c == 'g' or c == 'h' or c == 'i': # f is 102
+      #if c == 'f' or c == 'g' or c == 'h' or c == 'i': # f is 102
+      if ord(c)-102 in range(len(tasRuns)):
          send_frames(ord(c)-102,1) # 'f' (EVENT 1) maps to 0, 'g' (EVENT 1) maps to 1, etc.
-         #TODO: might need to fix.  does it send a g when controller 2 latches?  or when run 2 needs input??  is it per lane or per controller?
       else:
          print (ord(c))
 

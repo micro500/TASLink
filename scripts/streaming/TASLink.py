@@ -240,6 +240,29 @@ class CLI(cmd.Cmd):
       with open(filename, 'w') as f:
          f.write(yaml.dump(tasRuns[runID-1]))
          
+   def do_end(self, data):
+      """End one of the current runs"""
+      # print options
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      self.do_list(None)
+      # ask which run to end
+      runID = int(raw_input("Which run # do you want to end? "))
+      index = runID-1
+      # free ports
+      for port in tasRuns[index].portsList:
+         releaseConsolePort(port, tasRuns[index].controllerType)
+      # free custom stream and event
+      customStreams[index] = 0
+      # reset frame count
+      frameCounts[index] = 0
+      # remove input and run from lists
+      del inputBuffers[index]
+      del tasRuns[index]
+      # TODO: is there a need to update TASLink and let it know the controllers are disconncted?
+      # Or is it ok to have it be simply overriden later?
+
    def do_load(self, data):
       """Load a run from a file"""
       filename = raw_input("Please enter the file to load: ")
@@ -300,18 +323,18 @@ class CLI(cmd.Cmd):
       #get controller type
       while True:
          breakout = True
-         controllerType = raw_input("What controller type does this run use (normal, y, multitap, four-score)? ")
-         if controllerType.lower() not in ["normal", "y", "multitap", "four-score"]:
+         controllerType = raw_input("What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score)? ")
+         if controllerType.lower() not in ["normal", "y", "multitap", "four-score", "n", "m", "f"]:
             print("ERROR: Invalid controller type!\n")
             continue
             
-         if controllerType.lower() == "normal":
+         if controllerType.lower() == "normal" or controllerType.lower() == "n":
             controllerType = CONTROLLER_NORMAL
          elif controllerType.lower() == "y":
             controllerType = CONTROLLER_Y
-         elif controllerType.lower() == "multitap":
+         elif controllerType.lower() == "multitap" or controllerType.lower() == "m":
             controllerType = CONTROLLER_MULTITAP
-         elif controllerType.lower() == "four-score":
+         elif controllerType.lower() == "four-score" or controllerType.lower() == "f":
             controllerType = CONTROLLER_FOUR_SCORE
          
          for x in range(len(portsList)):         

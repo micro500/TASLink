@@ -5,6 +5,8 @@ import cmd
 import threading
 import yaml
 
+import time # used for sleeps in debugging
+
 CONTROLLER_NORMAL = 0 # 1 controller
 CONTROLLER_Y = 1 #: y-cable [like half a multitap]
 CONTROLLER_MULTITAP = 2 #: multitap (Ports 1 and 2 only) [snes only]
@@ -55,6 +57,7 @@ class TASRun(object):
       working_string = ""
 
       max = int(self.controllerBits/8) * self.numControllers # bytes * number of controllers
+
       # next we take controller type into account
       if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
          max *= 2
@@ -79,7 +82,7 @@ class TASRun(object):
             buffer.append(working_string)
             count = 0
             # now ditch bytes from unused controllers as necessary
-            for each in range(1,self.maxControllers-max):
+            for each in range(self.maxControllers-max):
                fh.read(1)
 
       fh.close()

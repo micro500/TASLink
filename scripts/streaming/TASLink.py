@@ -13,7 +13,6 @@ CONTROLLER_FOUR_SCORE = 3 #: four-score [nes-only peripheral that we don't do an
 baud = 2000000
 
 prebuffer = 60
-framecount1 = 0
 ser = None
 
 TASLINK_CONNECTED = 0 # set to 0 for development without TASLink plugged in, set to 1 for actual testing
@@ -25,6 +24,7 @@ customStreams = [0,0,0,0] # 1 when in use, 0 when available.
 MASKS = 'ABCD'
 tasRuns = []
 inputBuffers = []
+frameCounts = [0,0,0,0]
 
 # for all x, tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x]
 
@@ -377,16 +377,18 @@ while not inputBuffers: # wait until we have at least one run ready to go
    pass
 
 def send_frames(index,amount):
-   global framecount1
+   global frameCounts
    global ser
    global inputBuffers
+   
+   framecount = frameCounts[index]
 
    if TASLINK_CONNECTED == 1:
-      ser.write(''.join(inputBuffers[index][framecount1:(framecount1+amount)]))
+      ser.write(''.join(inputBuffers[index][framecount:(framecount+amount)]))
    else:
-      print("DATA SENT: ",''.join(inputBuffers[index][framecount1:(framecount1+amount)]))
+      print("DATA SENT: ",''.join(inputBuffers[index][framecount:(framecount+amount)]))
      
-   framecount1 = framecount1 + amount
+   framecount = framecount + amount
 
 #t3h urn
 

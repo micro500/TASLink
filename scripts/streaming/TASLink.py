@@ -12,8 +12,6 @@ CONTROLLER_FOUR_SCORE = 3 #: four-score [nes-only peripheral that we don't do an
 
 baud = 2000000
 
-SETTINGS_FILE_NAME = "saved_runs.yaml"
-
 prebuffer = 60
 framecount1 = 0
 ser = None
@@ -24,13 +22,13 @@ consolePorts = [2,0,0,0,0] # 1 when in use, 0 when available. 2 is used to waste
 consoleLanes = [2,0,0,0,0,0,0,0,0] # 1 when in use, 0 when available. 2 is used to waste cell 0
 lanes = [[-1],[1,2,5,6],[3,4,7,8],[5,6],[7,8]]
 customStreams = [0,0,0,0] # 1 when in use, 0 when available.
-customEvents = [0,0,0,0] # 1 when in use, 0 when available.
+MASKS = 'ABCD'
 tasRuns = []
 inputBuffers = []
 
-class TASRun(object):
+# for all x, tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x]
 
-   customCommand = "Z" # Z is undefined
+class TASRun(object):
     
    def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name):
       self.numControllers = num_controllers
@@ -50,7 +48,7 @@ class TASRun(object):
       else:
          self.maxControllers = 1 #random default, but truly we need to support other formats
     
-   def getInputBuffer(self):
+   def getInputBuffer(self, customCommand):
       fh = open(self.inputFile, 'rb')
       buffer = [] # create a new empty buffer
       count = 0
@@ -65,7 +63,7 @@ class TASRun(object):
          
       while True:
          if count == 0:
-            working_string = self.customCommand
+            working_string = customCommand
 
          b = fh.read(1) # read one byte
 
@@ -87,10 +85,6 @@ class TASRun(object):
       fh.close()
 
       return buffer
-     
-     
-   def setCustomCommand(self,custom_command):
-     self.customCommand = custom_command
 
 def setupCommunication(tasrun):
    #claim the ports / lanes
@@ -149,9 +143,8 @@ def setupCommunication(tasrun):
    else:
       customStreams[index] = 1 # mark in use
    command = 's'
-   customCommand = 'ABCD'[index]
+   customCommand = MASKS[index]
    controllerMask = "".join(controllers) # convert binary to string
-   tasrun.setCustomCommand(customCommand) # save the letter this run uses
    command += customCommand
    if TASLINK_CONNECTED:
       ser.write(command + chr(int(controllerMask,2))) # send the sA/sB/sC/sD command
@@ -159,16 +152,6 @@ def setupCommunication(tasrun):
       print(command, controllerMask)
       
    #setup events #s e lane_num byte controllerMask
-   index = -1
-   for counter in range(len(customEvents)):
-      if customEvents[counter] == 0:
-         index = counter
-         break
-   if index == -1:
-      print("ERROR: all four custom events are full!")
-      #TODO: handle gracefully
-   else:
-      customEvents[index] = 1 # mark in use
    command = 'se' + str(index+1)
    #do first byte
    byte = list('{0:08b}'.format(int(tasrun.window/0.25))) # create padded bytestring, convert to list for manipulation
@@ -185,7 +168,7 @@ def setupCommunication(tasrun):
    else:
       print("R")
 
-   inputBuffers.append(tasrun.getInputBuffer()) # add the input buffer to a global list of input buffers
+   inputBuffers.append(tasrun.getInputBuffer(MASKS[index])) # add the input buffer to a global list of input buffers
 
 def isConsolePortAvailable(port,type):
    # port check
@@ -261,10 +244,12 @@ class CLI(cmd.Cmd):
          print("ERROR: File does not exist!")
          return False
       with open(filename, 'r') as f:
-         tasRuns.append(yaml.load(f))
-      
-      #TODO: CHECK FOR PORT CONFLICTS ON LOAD!!!!!
-      
+         run = yaml.load(f)
+      # check for port conflicts
+      if not all(isConsolePortAvailable(port,run.controllerType) for port in run.portsList):
+         print("ERROR: Requested ports already in use!")
+         return False
+      tasRuns.append(run)
       setupCommunication(tasRuns[-1])
       
    def do_list(self, data):

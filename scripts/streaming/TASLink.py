@@ -285,7 +285,10 @@ class CLI(cmd.Cmd):
 
    def do_load(self, data):
       """Load a run from a file"""
-      filename = raw_input("Please enter the file to load: ")
+      if data == "":
+         filename = raw_input("Please enter the file to load: ")
+      else:
+         filename = data
       if not os.path.isfile(filename):
          print("ERROR: File does not exist!")
          return False

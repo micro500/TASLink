@@ -193,6 +193,7 @@ def setupCommunication(tasrun):
       print("R")
    
    inputBuffers.append(tasrun.getInputBuffer(customCommand)) # add the input buffer to a global list of input buffers
+   print("Run is ready to go!")
 
 def isConsolePortAvailable(port,type):
    # port check

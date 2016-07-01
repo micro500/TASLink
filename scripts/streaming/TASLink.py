@@ -486,18 +486,22 @@ if TASLINK_CONNECTED == 1:
          pass
 
       c = ser.read()
+      
+      breakout = False
 
-      #TODO: FIX now that we know g mapes to PORT 2, h maps to PORT 3, etc.
-      if ord(c)-102 in range(len(tasRuns)):
-         send_frames(ord(c)-102,1) # 'f' (EVENT 1) maps to 0, 'g' (EVENT 1) maps to 1, etc.
-      else:
+      for run_index in range(len(tasRuns)):
+         for port in tasRuns[run_index].portsList:
+            if port == ord(c)-101:
+               send_frames(run_index,1)
+               breakout = True
+               break
+         if breakout:
+            break
+            
+      if not breakout:
          print ("TASLink says: "+str(ord(c)))
 
 t.join() # block wait until CLI thread terminats
 sys.exit(0) # exit cleanly
-
-
-# port 2 always sends g.  need to fix
-# blank frames in the beginning
 
 # frames to skip, window should be easily editable

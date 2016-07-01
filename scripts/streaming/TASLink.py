@@ -288,6 +288,44 @@ class CLI(cmd.Cmd):
          f.write(yaml.dump(tasRuns[runID-1]))
       
       print("Save complete!")
+      
+   def do_modify_frames(self, data):
+      """Modify the initial blank input frames"""
+      # print options
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      self.do_list(None)
+      # ask which run to modify
+      try:
+         runID = int(raw_input("Which run # do you want to modify? "))
+         index = runID-1
+         run = tasRuns[index]
+         print("The current number of initial blank frames is : "+str(run.dummyFrames))
+         frames = int(raw_input("How many initial blank frames do you want? "))
+      except ValueError:
+            print("ERROR: Please enter integers!\n")
+            return False
+      difference = frames - run.dummyFrames # positive means we're adding frames, negative means we're removing frames
+      run.dummyFrames = frames
+      # modify input buffer accordingly
+      if difference > 0:
+         working_string = MASKS[index]
+         max = int(run.controllerBits/8) * run.numControllers # bytes * number of controllers      
+         # next we take controller type into account
+         if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
+            max *= 2
+         elif run.controllerType == CONTROLLER_MULTITAP:
+            max *= 4
+         for bytes in range(max):
+            working_string += chr(0xFF)
+            
+         for count in range(difference):
+            inputBuffers[index].insert(0,working_string)
+      elif difference < 0: # remove input frames
+         inputBuffers[index] = inputBuffers[index][difference:]
+      
+      print("Run has been updated. Remember to save if you want this change to be permanant!")
 
    def do_reset(self, data):
       """Reset an active run back to frame 0"""

@@ -12,6 +12,9 @@ import glob
 
 def complete(text, state):
    return (glob.glob(text+'*')+[None])[state]
+   
+def complete_nostate(text, *ignored):
+   return (glob.glob(text+'*')+[None])
 
 readline.set_completer_delims(' \t\n')
 readline.parse_and_bind("tab: complete")
@@ -235,7 +238,27 @@ def releaseConsolePort(port,type):
 class CLI(cmd.Cmd):
 
    def complete(self, text, state):
-      return (glob.glob(text+'*')+[None])[state]
+      if state == 0:
+         import readline
+         origline = readline.get_line_buffer()
+         line = origline.lstrip()
+         stripped = len(origline) - len(line)
+         begidx = readline.get_begidx() - stripped
+         endidx = readline.get_endidx() - stripped
+         
+         compfunc = self.custom_comp_func
+         self.completion_matches = compfunc(text, line, begidx, endidx)
+      try:
+         return self.completion_matches[state]
+      except IndexError:
+         return None
+         
+   def custom_comp_func(self,text, line, begidx, endidx):
+      return self.completenames(text, line, begidx, endidx) + self.completedefault(text, line, begidx, endidx)
+
+   # complete local directory listing
+   def completedefault(self, text, *ignored):
+      return complete_nostate(text) # get directory when it doesn't know how to autocomplete
    
    def emptyline(self):
       return False

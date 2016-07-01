@@ -230,12 +230,12 @@ def releaseConsolePort(port,type):
           consoleLanes[lanes[port][0]] = 0
           consoleLanes[lanes[port][1]] = 0
 
-#TODO: add commands: load, save, etc.
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
 
-   use_rawinput = False # enables tab completion of raw_input. seems to break autocompletion of the supported commands
+   def complete(self, text, state):
+      return (glob.glob(text+'*')+[None])[state]
    
    def emptyline(self):
       return False
@@ -439,7 +439,7 @@ t.start()
 
 # main thread of execution = serial communication thread
 # keep loop as tight as possible to eliminate communication overhead
-while not inputBuffers: # wait until we have at least one run ready to go
+while t.isAlive() and not inputBuffers: # wait until we have at least one run ready to go
    pass
 
 def send_frames(index,amount):
@@ -464,11 +464,17 @@ if TASLINK_CONNECTED == 1:
 
       c = ser.read()
 
-      #if c == 'f' or c == 'g' or c == 'h' or c == 'i': # f is 102
+      #TODO: FIX now that we know g mapes to PORT 2, h maps to PORT 3, etc.
       if ord(c)-102 in range(len(tasRuns)):
          send_frames(ord(c)-102,1) # 'f' (EVENT 1) maps to 0, 'g' (EVENT 1) maps to 1, etc.
       else:
-         print ("TASLink says: "+ord(c))
+         print ("TASLink says: "+str(ord(c)))
 
 t.join() # block wait until CLI thread terminats
 sys.exit(0) # exit cleanly
+
+
+# port 2 always sends g.  need to fix
+# blank frames in the beginning
+
+# frames to skip, window should be easily editable

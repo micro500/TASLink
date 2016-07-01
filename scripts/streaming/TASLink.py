@@ -45,7 +45,7 @@ frameCounts = [0,0,0,0]
 
 class TASRun(object):
     
-   def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name):
+   def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name,dummy_frames):
       self.numControllers = num_controllers
       self.portsList = ports_list
       self.controllerType = controller_type
@@ -53,6 +53,7 @@ class TASRun(object):
       self.overread = ovr
       self.window = wndw
       self.inputFile = file_name
+      self.dummyFrames = dummy_frames
 
       self.fileExtension = file_name.split(".")[-1] # pythonic last elemnt of a list/string/array
 
@@ -70,12 +71,19 @@ class TASRun(object):
       working_string = ""
 
       max = int(self.controllerBits/8) * self.numControllers # bytes * number of controllers
-
+      
       # next we take controller type into account
       if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
          max *= 2
       elif self.controllerType == CONTROLLER_MULTITAP:
          max *= 4
+         
+      # add the dummy frames
+      for frame in range(self.dummyFrames):
+         working_string = customCommand
+         for bytes in range(max):
+            working_string += chr(0xFF)
+      buffer.append(working_string)
          
       while True:
          if count == 0:
@@ -184,9 +192,6 @@ def setupCommunication(tasrun):
    else:
       print("R")
    
-   if TASLINK_CONNECTED:   
-      ser.write(customCommand+chr(0)) # add an extra dummy frame in the beginning?
-
    inputBuffers.append(tasrun.getInputBuffer(customCommand)) # add the input buffer to a global list of input buffers
 
 def isConsolePortAvailable(port,type):
@@ -431,8 +436,19 @@ class CLI(cmd.Cmd):
             print("ERROR: Window is not a multiple of 0.25!\n")
          else:
             break
+      # dummy frames
+      while True:
+         try:
+            dummyFrames = int(raw_input("Number of blank input frames to prepend? "))
+            if window < 0:
+               print("ERROR: Please enter a positive number!\n")
+               continue
+            else:
+               break
+         except ValueError:
+            print("ERROR: Please enter integers!\n")
       #create TASRun object and assign it to our global, defined above
-      tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName)
+      tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName,dummyFrames)
       tasRuns.append(tasrun)
      
       setupCommunication(tasrun)

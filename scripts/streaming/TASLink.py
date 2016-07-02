@@ -83,7 +83,7 @@ class TASRun(object):
          working_string = customCommand
          for bytes in range(max):
             working_string += chr(0xFF)
-      buffer.append(working_string)
+         buffer.append(working_string)
          
       while True:
          if count == 0:
@@ -529,14 +529,14 @@ def send_frames(index,amount):
       print("DATA SENT: ",''.join(inputBuffers[index][framecount:(framecount+amount)]))
      
    frameCounts[index] += amount
-
+   
 #t3h urn
 
 if TASLINK_CONNECTED == 1:
    send_frames(0,prebuffer)
 
    while True:
-     
+
       while ser.inWaiting() == 0:
          pass
 
@@ -555,8 +555,14 @@ if TASLINK_CONNECTED == 1:
             
       if not breakout:
          print ("TASLink says: "+str(ord(c)))
+      
+      """if c == 'f':
+         send_frames(0,1)"""
+         
 
 t.join() # block wait until CLI thread terminats
+if TASLINK_CONNECTED == 1:
+   ser.close()
 sys.exit(0) # exit cleanly
 
-# frames to skip, window should be easily editable
+# work on 1 run at a time

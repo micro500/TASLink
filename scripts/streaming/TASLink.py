@@ -132,6 +132,8 @@ def setupCommunication(tasrun):
       #enable the controllers lines
       if tasrun.controllerType == CONTROLLER_NORMAL:
          limit = 1
+      elif tasrun.controllerType == CONTROLLER_MULTITAP:
+         limit = 4
       else:
          limit = 2
       for counter in range(limit):
@@ -178,7 +180,7 @@ def setupCommunication(tasrun):
       print(command, controllerMask)
       
    #setup events #s e lane_num byte controllerMask
-   command = 'se' + str(index+1)
+   command = 'se' + str(min(tasrun.portsList))
    #do first byte
    byte = list('{0:08b}'.format(int(tasrun.window/0.25))) # create padded bytestring, convert to list for manipulation
    byte[0] = '1' # enable flag
@@ -190,9 +192,9 @@ def setupCommunication(tasrun):
 
    # finnal, clear lanes and get ready to rock
    if TASLINK_CONNECTED:
-      ser.write("R")
+      ser.write("r" + chr(int(controllerMask,2)))
    else:
-      print("R")
+      print("r", controllerMask)
    
    inputBuffers.append(tasrun.getInputBuffer(customCommand)) # add the input buffer to a global list of input buffers
    print("Run is ready to go!")
@@ -360,7 +362,23 @@ class CLI(cmd.Cmd):
       runID = int(raw_input("Which run # do you want to reset? "))
       index = runID-1
       frameCounts[index] = 0
-      ser.write("R") # clear the buffer
+
+      # get the lane mask
+      controllers = list('00000000')
+      tasrun = tasRuns[index]
+      if tasrun.controllerType == CONTROLLER_NORMAL:
+         limit = 1
+      elif tasrun.controllerType == CONTROLLER_MULTITAP:
+         limit = 4
+      else:
+         limit = 2
+
+      for counter in range(limit):
+         controllers[8 - lanes[port][counter]] = '1'
+
+      controllerMask = "".join(controllers)  # convert binary to string
+
+      ser.write("r"+ chr(int(controllerMask,2))) # clear the buffer
       send_frames(index,prebuffer) # re-pre-buffer-!
       print("Reset complete!")
 

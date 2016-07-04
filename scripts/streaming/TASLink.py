@@ -45,6 +45,16 @@ frameCounts = [0,0,0,0]
 # For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x]. This MAY NOT corresponds to mask 'ABCD'[x] after remove!
 # Each tasRuns[x] listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
 
+def send_frames(index, amount):
+   framecount = frameCounts[index]
+
+   if TASLINK_CONNECTED == 1:
+      ser.write(''.join(inputBuffers[index][framecount:(framecount + amount)]))
+   else:
+      print("DATA SENT: ", ''.join(inputBuffers[index][framecount:(framecount + amount)]))
+
+   frameCounts[index] += amount
+
 class TASRun(object):
     
    def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name,dummy_frames):
@@ -573,16 +583,6 @@ t.start()
 # keep loop as tight as possible to eliminate communication overhead
 while t.isAlive() and not inputBuffers: # wait until we have at least one run ready to go
    pass
-
-def send_frames(index,amount):
-   framecount = frameCounts[index]
-
-   if TASLINK_CONNECTED == 1:
-      ser.write(''.join(inputBuffers[index][framecount:(framecount+amount)]))
-   else:
-      print("DATA SENT: ",''.join(inputBuffers[index][framecount:(framecount+amount)]))
-     
-   frameCounts[index] += amount
    
 #t3h urn
 

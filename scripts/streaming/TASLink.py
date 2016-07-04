@@ -42,8 +42,8 @@ inputBuffers = []
 listenPorts = []
 frameCounts = [0,0,0,0]
 
-# For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x].
-# Each x listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
+# For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x]. This MAY NOT corresponds to mask 'ABCD'[x] after remove!
+# Each tasRuns[x] listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
 
 class TASRun(object):
     
@@ -65,7 +65,7 @@ class TASRun(object):
          self.maxControllers = 8
       else:
          self.maxControllers = 1 #random default, but truly we need to support other formats
-    
+
    def getInputBuffer(self, customCommand):
       fh = open(self.inputFile, 'rb')
       buffer = [] # create a new empty buffer
@@ -245,12 +245,11 @@ def releaseConsolePort(port,type):
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
 
-   prompt = "[TASLink]: "
+   prompt = "TASLink> "
    intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
    def complete(self, text, state):
       if state == 0:
-         import readline
          origline = readline.get_line_buffer()
          line = origline.lstrip()
          stripped = len(origline) - len(line)
@@ -270,7 +269,8 @@ class CLI(cmd.Cmd):
    # complete local directory listing
    def completedefault(self, text, *ignored):
       return complete_nostate(text) # get directory when it doesn't know how to autocomplete
-   
+
+   # do not execute the previous command! (which is the default behavior if not overriden
    def emptyline(self):
       return False
 
@@ -330,7 +330,25 @@ class CLI(cmd.Cmd):
       elif difference < 0: # remove input frames
          inputBuffers[index] = inputBuffers[index][difference:]
       
-      print("Run has been updated. Remember to save if you want this change to be permanant!")
+      print("Run has been updated. Remember to save if you want this change to be permanent!")
+
+   def do_DPCM_fix(self, data):
+      """Apply the DPCM fix to each controller in a run"""
+      # print options
+      if not tasRuns:
+         print("No currently active runs.")
+         return False
+      self.do_list(None)
+      runID = int(raw_input("Which run # do you want to apply the DPCM fix? "))
+      index = runID - 1
+      tasrun = tasRuns[index]
+      for port in tasrun.portsList:
+         command = "sp"
+         command += str(port) # should look like 'sp1' now
+         if TASLINK_CONNECTED:
+            ser.write(command + chr(tasrun.controllerType+128)) # the +128 sets the high bit, applying the DPCM fix
+         else:
+            print(command,tasrun.controllerType+128)
 
    def do_reset(self, data):
       """Reset an active run back to frame 0"""
@@ -342,11 +360,13 @@ class CLI(cmd.Cmd):
       runID = int(raw_input("Which run # do you want to reset? "))
       index = runID-1
       frameCounts[index] = 0
+      ser.write("R") # clear the buffer
       send_frames(index,prebuffer) # re-pre-buffer-!
       print("Reset complete!")
-      
+
+   #TODO: This whole command needs careful rewriting
    def do_remove(self, data):
-      """Remove one of the current runs"""
+      """Remove one of the current runs. IMPLEMENTATION INCOMPLETE!"""
       # print options
       if not tasRuns:
          print("No currently active runs.")
@@ -360,13 +380,15 @@ class CLI(cmd.Cmd):
          releaseConsolePort(port, tasRuns[index].controllerType)
       # free custom stream and event
       customStreams[index] = 0
-      # reset frame count
-      frameCounts[index] = 0
       # remove input and run from lists
       del inputBuffers[index]
       del tasRuns[index]
       del listenPorts[index]
-      # TODO: BUG: after the del commands, the indices may be off.  need to update other lists!!!!!
+
+      # reset frame counts, move them accordingly
+      for i in range(index,len(frameCounts)-1): # one less than the hardcoded max of array
+         frameCounts[i] = frameCounts[i+1]
+      frameCounts[-1] = 0 # max should be 0 no matter what, since we've just removed one and compressed the list
       # TODO: is there a need to update TASLink and let it know the controllers are disconncted?
       # Or is it ok to have it be simply overriden later?
       

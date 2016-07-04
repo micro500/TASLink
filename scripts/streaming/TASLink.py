@@ -39,6 +39,7 @@ customStreams = [0,0,0,0] # 1 when in use, 0 when available.
 MASKS = 'ABCD'
 tasRuns = []
 inputBuffers = []
+listenPorts = []
 frameCounts = [0,0,0,0]
 
 # for all x, tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x]
@@ -321,7 +322,7 @@ class CLI(cmd.Cmd):
             working_string += chr(0xFF)
             
          for count in range(difference):
-            inputBuffers[index].insert(0,working_string)
+            inputBuffers[index].insert(0,working_string) # add the correct number of blank input frames
       elif difference < 0: # remove input frames
          inputBuffers[index] = inputBuffers[index][difference:]
       
@@ -360,6 +361,8 @@ class CLI(cmd.Cmd):
       # remove input and run from lists
       del inputBuffers[index]
       del tasRuns[index]
+      del listenPorts[index]
+      # TODO: BUG: after the del commands, the indices may be off.  need to update other lists!!!!!
       # TODO: is there a need to update TASLink and let it know the controllers are disconncted?
       # Or is it ok to have it be simply overriden later?
       
@@ -381,6 +384,7 @@ class CLI(cmd.Cmd):
          print("ERROR: Requested ports already in use!")
          return False
       tasRuns.append(run)
+      listenPorts.append(min(run.portsList))
       setupCommunication(tasRuns[-1])
       
       print("Run has been successfully loaded!")
@@ -489,6 +493,7 @@ class CLI(cmd.Cmd):
       #create TASRun object and assign it to our global, defined above
       tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName,dummyFrames)
       tasRuns.append(tasrun)
+      listenPorts.append(min(tasrun.portsList))
      
       setupCommunication(tasrun)
          
@@ -544,25 +549,14 @@ if TASLINK_CONNECTED == 1:
       
       breakout = False
 
-      for run_index in range(len(tasRuns)):
-         for port in tasRuns[run_index].portsList:
-            if port == ord(c)-101:
-               send_frames(run_index,1)
-               breakout = True
-               break
-         if breakout:
+      for run_index,port in enumerate(listenPorts):
+         if port == ord(c)-101:
+            send_frames(run_index,1)
             break
-            
-      if not breakout:
-         print ("TASLink says: "+str(ord(c)))
-      
-      """if c == 'f':
-         send_frames(0,1)"""
-         
 
 t.join() # block wait until CLI thread terminats
 if TASLINK_CONNECTED == 1:
-   ser.close()
+   ser.close() # close serial communication cleanly
 sys.exit(0) # exit cleanly
 
 # work on 1 run at a time

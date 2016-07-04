@@ -197,7 +197,6 @@ def setupCommunication(tasrun):
       print("r", controllerMask)
    
    inputBuffers.append(tasrun.getInputBuffer(customCommand)) # add the input buffer to a global list of input buffers
-   print("Run is ready to go!")
 
 def isConsolePortAvailable(port,type):
    # port check
@@ -430,6 +429,8 @@ class CLI(cmd.Cmd):
       tasRuns.append(run)
       listenPorts.append(min(run.portsList))
       setupCommunication(tasRuns[-1])
+      if TASLINK_CONNECTED == 1:
+         send_frames(len(tasRuns)-1, prebuffer)
       
       print("Run has been successfully loaded!")
       
@@ -540,6 +541,10 @@ class CLI(cmd.Cmd):
       listenPorts.append(min(tasrun.portsList))
      
       setupCommunication(tasrun)
+      if TASLINK_CONNECTED == 1:
+         send_frames(len(tasRuns) - 1, prebuffer)
+
+      print("Run is ready to go!")
          
    def do_EOF(self, line):
       """/wave"""
@@ -580,9 +585,6 @@ def send_frames(index,amount):
    frameCounts[index] += amount
    
 #t3h urn
-
-if TASLINK_CONNECTED == 1:
-   send_frames(0,prebuffer)
 
    while True:
 

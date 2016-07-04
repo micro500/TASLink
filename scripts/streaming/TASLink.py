@@ -5,7 +5,7 @@ import cmd
 import threading
 import yaml
 
-import time # used for sleeps in debugging
+# import time # used for sleeps in debugging
 
 import rlcompleter,readline # to add support for tab completion of commands
 import glob
@@ -42,7 +42,8 @@ inputBuffers = []
 listenPorts = []
 frameCounts = [0,0,0,0]
 
-# for all x, tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x]
+# For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x], which corresponds to mask 'ABCD'[x].
+# Each x listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
 
 class TASRun(object):
     
@@ -243,6 +244,9 @@ def releaseConsolePort(port,type):
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
+
+   prompt = "[TASLink]: "
+   intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
    def complete(self, text, state):
       if state == 0:

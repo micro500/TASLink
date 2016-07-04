@@ -138,7 +138,7 @@ architecture Behavioral of main is
   signal data_receive_mask : std_logic_vector(8 downto 1) := (others => '0');
   signal active_setup_cmd : std_logic_vector(7 downto 0);
   
-  type uart_states is (main_cmd, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
+  type uart_states is (main_cmd, reset_data, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
   signal uart_state : uart_states := main_cmd;
   signal data_controller_id : integer range 1 to 8;
   signal data_byte_id : integer range 1 to 4;
@@ -152,7 +152,7 @@ architecture Behavioral of main is
   signal buffer_read : std_logic_vector(1 to 8);
   signal buffer_empty : std_logic_vector(1 to 8);
   signal buffer_full : std_logic_vector(1 to 8);
-  signal buffer_clear : std_logic_vector(1 to 8);
+  signal buffer_clear : std_logic_vector(8 downto 1);
   
   signal frame_timer_active : std_logic := '0';
   signal frame_timer : integer range 0 to 160000 := 0;
@@ -213,7 +213,7 @@ architecture Behavioral of main is
   signal event_timer_restart : std_logic_vector(1 to 4) := (others => '0');
   type event_lane_mask_arr is array (natural range <>) of std_logic_vector(7 downto 0);
   signal event_buffer_read_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
-  signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '1'));
+  signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
   signal event_timer_active : std_logic_vector(1 to 4) := (others => '0');
   
   type vector16 is array (natural range <>) of std_logic_vector(15 downto 0);
@@ -463,13 +463,20 @@ uart_recieve_btye: process(CLK)
                 buffer_clear <= "11111111";
                 --uart_state <= main_cmd;
               
+              when x"72" => -- 'r'
+                uart_state <= reset_data;
+              
               when x"73" => -- 's'
                 uart_state <= setup_cmd_data1;
                 
               when others =>
               
             end case;
-                    
+          
+          when reset_data =>
+            buffer_clear <= data_from_uart;
+            uart_state <= main_cmd;
+          
           when button_data_cmd =>
             -- Store this byte of data in the right spot
             if (data_byte_id = 1) then

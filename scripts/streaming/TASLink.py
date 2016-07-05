@@ -381,6 +381,8 @@ class CLI(cmd.Cmd):
             else:
                 print("R")
             frameCounts = [0, 0, 0, 0]
+            for index in range(len(tasRuns)):
+                send_frames(index, prebuffer)  # re-pre-buffer-!
             print("Reset command given to all runs!")
             return False
         # print options
@@ -395,6 +397,8 @@ class CLI(cmd.Cmd):
             else:
                 print("R")
             frameCounts = [0, 0, 0, 0]
+            for index in range(len(tasRuns)):
+                send_frames(index, prebuffer)  # re-pre-buffer-!
             print("Reset command given to all runs!")
             return False
         try:
@@ -640,10 +644,14 @@ if TASLINK_CONNECTED and not t.isAlive():
 
 # t3h urn
 if TASLINK_CONNECTED:
-    while True:
+    while t.isAlive():
 
-        while ser.inWaiting() == 0:
+        while ser.inWaiting() == 0 and t.isAlive():
             pass
+
+        if not t.isAlive():
+            ser.close()  # close serial communication cleanly
+            break
 
         c = ser.read()
 
@@ -654,9 +662,6 @@ if TASLINK_CONNECTED:
                 send_frames(run_index, 1)
                 break
 
-t.join()  # block wait until CLI thread terminats
-if TASLINK_CONNECTED == 1:
-    ser.close()  # close serial communication cleanly
 sys.exit(0)  # exit cleanly
 
 # work on 1 run at a time

@@ -380,6 +380,7 @@ class CLI(cmd.Cmd):
                 ser.write("R")
             else:
                 print("R")
+            frameCounts = [0, 0, 0, 0]
             print("Reset command given to all runs!")
             return False
         # print options
@@ -393,6 +394,7 @@ class CLI(cmd.Cmd):
                 ser.write("R")
             else:
                 print("R")
+            frameCounts = [0, 0, 0, 0]
             print("Reset command given to all runs!")
             return False
         try:

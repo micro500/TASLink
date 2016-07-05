@@ -380,6 +380,7 @@ class CLI(cmd.Cmd):
    #TODO: This whole command needs careful rewriting
    def do_remove(self, data):
       """Remove one of the current runs. IMPLEMENTATION INCOMPLETE!"""
+      print("WARNING: THIS COMMAND IS NOT YET FULLY FUNCTIONAL! USE AT YOUR OWN RISK!")
       # print options
       if not tasRuns:
          print("No currently active runs.")
@@ -579,7 +580,11 @@ t.start()
 # keep loop as tight as possible to eliminate communication overhead
 while t.isAlive() and not inputBuffers: # wait until we have at least one run ready to go
    pass
-   
+
+if TASLINK_CONNECTED and not t.isAlive():
+   ser.close()
+   sys.exit(0)
+
 #t3h urn
 if TASLINK_CONNECTED:
    while True:

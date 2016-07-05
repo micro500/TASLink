@@ -50,6 +50,21 @@ frameCounts = [0, 0, 0, 0]
 # For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x]. This MAY NOT corresponds to mask 'ABCD'[x] after remove!
 # Each tasRuns[x] listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
 
+def load(filename):
+    with open(filename, 'r') as f:
+        run = yaml.load(f)
+    # check for port conflicts
+    if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
+        print("ERROR: Requested ports already in use!")
+        return False
+    tasRuns.append(run)
+    listenPorts.append(min(run.portsList))
+    setupCommunication(tasRuns[-1])
+    if TASLINK_CONNECTED == 1:
+        send_frames(len(tasRuns) - 1, prebuffer)
+
+    print("Run has been successfully loaded!")
+
 def send_frames(index, amount):
     framecount = frameCounts[index]
 
@@ -451,19 +466,7 @@ class CLI(cmd.Cmd):
         if not os.path.isfile(filename):
             print("ERROR: File does not exist!")
             return False
-        with open(filename, 'r') as f:
-            run = yaml.load(f)
-        # check for port conflicts
-        if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
-            print("ERROR: Requested ports already in use!")
-            return False
-        tasRuns.append(run)
-        listenPorts.append(min(run.portsList))
-        setupCommunication(tasRuns[-1])
-        if TASLINK_CONNECTED == 1:
-            send_frames(len(tasRuns) - 1, prebuffer)
-
-        print("Run has been successfully loaded!")
+        load(filename)
 
     def do_list(self, data):
         """List all active runs"""
@@ -598,8 +601,9 @@ class CLI(cmd.Cmd):
     def postloop(self):
         print
 
+# ----- MAIN EXECUTION BEGINS HERE -----
 
-if len(sys.argv) < 2:  # JUSTINS
+if len(sys.argv) < 2:
     sys.stderr.write('Usage: ' + sys.argv[0] + ' <interface>\n\n')
     sys.stderr.write('OR: ' + sys.argv[0] + ' <interface> <file1> <file2> ... \n\n')
     sys.exit(0)
@@ -610,6 +614,13 @@ if TASLINK_CONNECTED:
     except SerialException:
         print ("ERROR: the specified interface (" + sys.argv[1] + ") is in use")
         sys.exit(0)
+
+if len(sys.argv) > 2:  # load some initial files!
+    for filename in sys.argv[2:]:
+        if not os.path.isfile(filename):
+            print("ERROR: File "+filename+" does not exist!")
+            continue
+        load(filename)
 
 # start CLI in its own thread
 cli = CLI()

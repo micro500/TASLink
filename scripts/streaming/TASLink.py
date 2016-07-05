@@ -57,7 +57,7 @@ def send_frames(index, amount):
 
 class TASRun(object):
     
-   def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name,dummy_frames):
+   def __init__(self,num_controllers,ports_list,controller_type,controller_bits,ovr,wndw,file_name,dummy_frames,dpcm_fix):
       self.numControllers = num_controllers
       self.portsList = ports_list
       self.controllerType = controller_type
@@ -66,6 +66,7 @@ class TASRun(object):
       self.window = wndw
       self.inputFile = file_name
       self.dummyFrames = dummy_frames
+      self.dpcmFix = dpcm_fix
 
       self.fileExtension = file_name.split(".")[-1] # pythonic last elemnt of a list/string/array
 
@@ -134,10 +135,13 @@ def setupCommunication(tasrun):
       #enable the console ports
       command = "sp"
       command += str(port) # should look like 'sp1' now
+      portData = tasrun.controllerType
+      if tasrun.dpcmFix:
+         portData = +128
       if TASLINK_CONNECTED:
-         ser.write(command + chr(tasrun.controllerType))
+         ser.write(command + chr(portData))
       else:
-         print(command,tasrun.controllerType)
+         print(command,portData)
       
       #enable the controllers lines
       if tasrun.controllerType == CONTROLLER_NORMAL:
@@ -343,24 +347,6 @@ class CLI(cmd.Cmd):
       
       print("Run has been updated. Remember to save if you want this change to be permanent!")
 
-   def do_DPCM_fix(self, data):
-      """Apply the DPCM fix to each controller in a run"""
-      # print options
-      if not tasRuns:
-         print("No currently active runs.")
-         return False
-      self.do_list(None)
-      runID = int(raw_input("Which run # do you want to apply the DPCM fix? "))
-      index = runID - 1
-      tasrun = tasRuns[index]
-      for port in tasrun.portsList:
-         command = "sp"
-         command += str(port) # should look like 'sp1' now
-         if TASLINK_CONNECTED:
-            ser.write(command + chr(tasrun.controllerType+128)) # the +128 sets the high bit, applying the DPCM fix
-         else:
-            print(command,tasrun.controllerType+128)
-
    def do_reset(self, data):
       """Reset an active run back to frame 0"""
       # print options
@@ -525,6 +511,16 @@ class CLI(cmd.Cmd):
             continue
          else:
             break
+      # DPCM fix
+      while True:
+         dpcm_fix = raw_input("Apply DPCM fix (y/n)? ")
+         if dpcm_fix.lower() == 'y':
+            dpcm_fix = True
+            break
+         elif dpcm_fix.lower() == 'n':
+            dpcm_fix = False
+            break
+         print("ERROR: Please enter y for yes or n for no!\n")
       #window mode 0-15.75ms
       while True:
          window = float(raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? "))
@@ -546,7 +542,7 @@ class CLI(cmd.Cmd):
          except ValueError:
             print("ERROR: Please enter integers!\n")
       #create TASRun object and assign it to our global, defined above
-      tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName,dummyFrames)
+      tasrun = TASRun(numControllers,portsList,controllerType,controllerBits,overread,window,fileName,dummyFrames,dpcm_fix)
       tasRuns.append(tasrun)
       listenPorts.append(min(tasrun.portsList))
      
@@ -585,14 +581,14 @@ while t.isAlive() and not inputBuffers: # wait until we have at least one run re
    pass
    
 #t3h urn
-
+if TASLINK_CONNECTED:
    while True:
 
       while ser.inWaiting() == 0:
          pass
 
       c = ser.read()
-      
+
       breakout = False
 
       for run_index,port in enumerate(listenPorts):

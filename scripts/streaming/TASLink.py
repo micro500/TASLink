@@ -375,6 +375,7 @@ class CLI(cmd.Cmd):
 
     def do_reset(self, data):
         """Reset an active run back to frame 0"""
+        global frameCounts
         if data.lower() == 'all':
             if TASLINK_CONNECTED:
                 ser.write("R")

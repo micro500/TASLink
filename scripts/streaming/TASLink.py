@@ -654,14 +654,14 @@ if TASLINK_CONNECTED:
             ser.close()  # close serial communication cleanly
             break
 
-        c = ser.read()
-
-        breakout = False
+        numBytes = ser.inWaiting()
+        c = ser.read(numBytes)
+        latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
 
         for run_index, port in enumerate(listenPorts):
-            if port == ord(c) - 101:
-                send_frames(run_index, 1)
-                break
+            latches = latchCounts[port]
+            if latches > 0:
+                send_frames(run_index, latches)
 
 sys.exit(0)  # exit cleanly
 

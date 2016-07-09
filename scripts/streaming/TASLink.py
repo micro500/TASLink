@@ -39,16 +39,32 @@ TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, se
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 lanes = [[-1], [1, 2, 5, 6], [3, 4, 7, 8], [5, 6], [7, 8]]
-customStreams = [0, 0, 0, 0]  # 1 when in use, 0 when available.
 MASKS = 'ABCD'
+masksInUse = [0, 0, 0, 0]
 tasRuns = []
 inputBuffers = []
 listenPorts = []
+customCommands = []
 frameCounts = [0, 0, 0, 0]
 
 
-# For all x in [0,4), tasRuns[x] should always correspond to have customStreams[x]. This MAY NOT corresponds to mask 'ABCD'[x] after remove!
-# Each tasRuns[x] listens for latch on port listenPorts[x]. Each run is up to frame frameCouts[x].
+# For all x in [0,4), tasRuns[x] should always correspond to have customCommands[x].
+# Each tasRuns[x] listens for latch on port listenPorts[x]. Each run has progressed up to frame frameCounts[x].
+
+def getNextMask():
+    for index,letter in enumerate(MASKS):
+        if masksInUse[index] == 0:
+            masksInUse[index] = 1
+            return letter
+    return 'Z'
+
+def freeMask(letter):
+    val = ord(letter)
+    if not (65 <= val <= 68):
+        return False
+    masksInUse[val-65] = 0
+    return True
+
 
 def load(filename):
     with open(filename, 'r') as f:
@@ -89,7 +105,7 @@ class TASRun(object):
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
 
-        self.fileExtension = file_name.split(".")[-1]  # pythonic last elemnt of a list/string/array
+        self.fileExtension = file_name.split(".")[-1]  # pythonic last element of a list/string/array
 
         if self.fileExtension == 'r08':
             self.maxControllers = 2
@@ -196,18 +212,12 @@ def setupCommunication(tasrun):
                 print(command, bytestring)
 
     # setup custom stream command
-    index = -1
-    for counter in range(len(customStreams)):
-        if customStreams[counter] == 0:
-            index = counter
-            break
-    if index == -1:
+    command = 's'
+    customCommand = getNextMask()
+    customCommands.append(customCommand)
+    if customCommand == 'Z':
         print("ERROR: all four custom streams are full!")
         # TODO: handle gracefully
-    else:
-        customStreams[index] = 1  # mark in use
-    command = 's'
-    customCommand = MASKS[index]
     controllerMask = "".join(controllers)  # convert binary to string
     command += customCommand
     if TASLINK_CONNECTED:
@@ -311,7 +321,7 @@ class CLI(cmd.Cmd):
     def completedefault(self, text, *ignored):
         return complete_nostate(text)  # get directory when it doesn't know how to autocomplete
 
-    # do not execute the previous command! (which is the default behavior if not overriden
+    # do not execute the previous command! (which is the default behavior if not overridden
     def emptyline(self):
         return False
 
@@ -356,7 +366,7 @@ class CLI(cmd.Cmd):
         run.dummyFrames = frames
         # modify input buffer accordingly
         if difference > 0:
-            working_string = MASKS[index]
+            working_string = customCommands[index]
             max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
             # next we take controller type into account
             if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
@@ -433,10 +443,8 @@ class CLI(cmd.Cmd):
         send_frames(index, prebuffer)  # re-pre-buffer-!
         print("Reset complete!")
 
-    # TODO: This whole command needs careful rewriting
     def do_remove(self, data):
-        """Remove one of the current runs. IMPLEMENTATION INCOMPLETE!"""
-        print("WARNING: THIS COMMAND IS NOT YET FULLY FUNCTIONAL! USE AT YOUR OWN RISK!")
+        """Remove one of the current runs."""
         # print options
         if not tasRuns:
             print("No currently active runs.")
@@ -445,22 +453,40 @@ class CLI(cmd.Cmd):
         # ask which run to end
         runID = int(raw_input("Which run # do you want to end? "))
         index = runID - 1
+        # make the mask
+        controllers = list('00000000')
+        tasrun = tasRuns[index]
+        if tasrun.controllerType == CONTROLLER_NORMAL:
+            limit = 1
+        elif tasrun.controllerType == CONTROLLER_MULTITAP:
+            limit = 4
+        else:
+            limit = 2
+        for port in tasrun.portsList:
+            for counter in range(limit):
+                controllers[8 - lanes[port][counter]] = '1'
+        controllerMask = "".join(controllers)  # convert binary to string
         # free ports
         for port in tasRuns[index].portsList:
             releaseConsolePort(port, tasRuns[index].controllerType)
         # free custom stream and event
-        customStreams[index] = 0
+        freeMask(customCommands[index])
         # remove input and run from lists
         del inputBuffers[index]
         del tasRuns[index]
         del listenPorts[index]
+        del customCommands[index]
 
         # reset frame counts, move them accordingly
         for i in range(index, len(frameCounts) - 1):  # one less than the hardcoded max of array
             frameCounts[i] = frameCounts[i + 1]
         frameCounts[-1] = 0  # max should be 0 no matter what, since we've just removed one and compressed the list
-        # TODO: is there a need to update TASLink and let it know the controllers are disconncted?
-        # Or is it ok to have it be simply overriden later?
+
+       # clear the lanes
+        if TASLINK_CONNECTED:
+            ser.write("r" + chr(int(controllerMask, 2)))  # clear the buffer
+        else:
+            print("r" + controllerMask, 2)  # clear the buffer
 
         print("Run has been successfully removed!")
 

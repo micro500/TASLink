@@ -34,7 +34,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -109,7 +109,7 @@ class TASRun(object):
 
         if self.fileExtension == 'r08':
             self.maxControllers = 2
-        elif self.fileExtension == 'r16':
+        elif self.fileExtension == 'r16' or self.fileExtension == 'r16m':
             self.maxControllers = 8
         else:
             self.maxControllers = 1  # random default, but truly we need to support other formats
@@ -119,42 +119,49 @@ class TASRun(object):
         buffer = []  # create a new empty buffer
         count = 0
         working_string = ""
+        numBytes = int(self.controllerBits / 8)
 
-        max = int(self.controllerBits / 8) * self.numControllers  # bytes * number of controllers
+        maxBytes = numBytes * self.numControllers  # bytes * number of controllers
 
         # next we take controller type into account
         if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
-            max *= 2
+            maxBytes *= 2
         elif self.controllerType == CONTROLLER_MULTITAP:
-            max *= 4
+            maxBytes *= 4
 
         # add the dummy frames
         for frame in range(self.dummyFrames):
             working_string = customCommand
-            for bytes in range(max):
+            for bytes in range(maxBytes):
                 working_string += chr(0xFF)
             buffer.append(working_string)
 
+        done = False
         while True:
             if count == 0:
                 working_string = customCommand
+            
+            for each in range(numBytes):
+                b = fh.read(1)  # read one byte
 
-            b = fh.read(1)  # read one byte
+                if len(b) == 0:  # fail case
+                    done = True
+                    break
 
-            if len(b) == 0:  # fail case
+                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+                working_string += chr(b)  # add our byte data
+
+                count += 1  # note the odd increment timing to make the next check easier
+
+            if done:
                 break
 
-            b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-            working_string += chr(b)  # add our byte data
-
-            count += 1  # note the odd increment timing to make the next check easier
-
-            if count == max:
+            if count >= maxBytes:
                 buffer.append(working_string)
                 count = 0
                 # now ditch bytes from unused controllers as necessary
-                for each in range(self.maxControllers - max):
-                    fh.read(1)
+                limit = self.maxControllers * numBytes
+                fh.read(limit - maxBytes) # ditched
 
         fh.close()
 
@@ -162,6 +169,7 @@ class TASRun(object):
 
 
 def setupCommunication(tasrun):
+    print("Now preparing TASLink....")
     # claim the ports / lanes
     for port in tasrun.portsList:
         claimConsolePort(port, tasrun.controllerType)
@@ -525,8 +533,8 @@ class CLI(cmd.Cmd):
             try:
                 breakout = True
                 portsList = raw_input(
-                    "Which physical controller port numbers will you use (1-4, spaces between port numbers)? ")
-                portsList = map(int, portsList.split())  # splits by spaces, then convert to int
+                    "Which physical controller port numbers will you use (1-4, commas or spaces between port numbers)? ")
+                portsList = map(int, portsList.split(", "))  # splits by commas or spaces, then convert to int
                 numControllers = len(portsList)
                 for port in portsList:
                     if port not in range(1, 5):  # Top of range is exclusive
@@ -670,6 +678,7 @@ if TASLINK_CONNECTED and not t.isAlive():
     sys.exit(0)
 
 # t3h urn
+
 if TASLINK_CONNECTED:
     while t.isAlive():
 

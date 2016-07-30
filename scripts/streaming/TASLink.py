@@ -34,7 +34,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -47,9 +47,20 @@ listenPorts = []
 customCommands = []
 frameCounts = [0, 0, 0, 0]
 
-
 # For all x in [0,4), tasRuns[x] should always correspond to have customCommands[x].
 # Each tasRuns[x] listens for latch on port listenPorts[x]. Each run has progressed up to frame frameCounts[x].
+
+def readint(question):
+    num = -1
+    while True:
+        ans = raw_input(question)
+        try:
+            num = int(ans)
+        except ValueError:
+            print("ERROR: Expected integer, but integer not found")
+            continue
+        break
+    return num
 
 def getNextMask():
     for index,letter in enumerate(MASKS):
@@ -93,8 +104,7 @@ def send_frames(index, amount):
 
 
 class TASRun(object):
-    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name,
-                 dummy_frames, dpcm_fix):
+    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix):
         self.numControllers = num_controllers
         self.portsList = ports_list
         self.controllerType = controller_type
@@ -345,7 +355,14 @@ class CLI(cmd.Cmd):
             return False
         self.do_list(None)
         # ask which run to save
-        runID = int(raw_input("Which run # do you want to save? "))
+        runID = -1
+        while True:
+            runID = readint("Which run # do you want to save? ")
+            if runID > 0 and runID <= len(tasRuns): # confirm valid run number
+                break
+            else:
+                print("ERROR: Invalid run number!")
+
         filename = raw_input("Please enter filename: ")
 
         with open(filename, 'w') as f:
@@ -361,15 +378,17 @@ class CLI(cmd.Cmd):
             return False
         self.do_list(None)
         # ask which run to modify
-        try:
-            runID = int(raw_input("Which run # do you want to modify? "))
-            index = runID - 1
-            run = tasRuns[index]
-            print("The current number of initial blank frames is : " + str(run.dummyFrames))
-            frames = int(raw_input("How many initial blank frames do you want? "))
-        except ValueError:
-            print("ERROR: Please enter integers!\n")
-            return False
+        runID = -1
+        while True:
+            runID = readint("Which run # do you want to modify? ")
+            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                break
+            else:
+                print("ERROR: Invalid run number!")
+        index = runID - 1
+        run = tasRuns[index]
+        print("The current number of initial blank frames is : " + str(run.dummyFrames))
+        frames = readint("How many initial blank frames do you want? ")
         difference = frames - run.dummyFrames  # positive means we're adding frames, negative means we're removing frames
         run.dummyFrames = frames
         # modify input buffer accordingly
@@ -459,7 +478,13 @@ class CLI(cmd.Cmd):
             return False
         self.do_list(None)
         # ask which run to end
-        runID = int(raw_input("Which run # do you want to end? "))
+        runID = -1
+        while True:
+            runID = readint("Which run # do you want to end? ")
+            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                break
+            else:
+                print("ERROR: Invalid run number!")
         index = runID - 1
         # make the mask
         controllers = list('00000000')
@@ -532,9 +557,8 @@ class CLI(cmd.Cmd):
         while True:
             try:
                 breakout = True
-                portsList = raw_input(
-                    "Which physical controller port numbers will you use (1-4, commas or spaces between port numbers)? ")
-                portsList = map(int, portsList.split(", "))  # splits by commas or spaces, then convert to int
+                portsList = raw_input("Which physical controller port numbers will you use (1-4, commas or spaces between port numbers)? ")
+                portsList = map(int, portsList.split(","))  # splits by commas or spaces, then convert to int
                 numControllers = len(portsList)
                 for port in portsList:
                     if port not in range(1, 5):  # Top of range is exclusive
@@ -555,8 +579,7 @@ class CLI(cmd.Cmd):
         # get controller type
         while True:
             breakout = True
-            controllerType = raw_input(
-                "What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score)? ")
+            controllerType = raw_input("What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score)? ")
             if controllerType.lower() not in ["normal", "y", "multitap", "four-score", "n", "m", "f"]:
                 print("ERROR: Invalid controller type!\n")
                 continue
@@ -579,14 +602,14 @@ class CLI(cmd.Cmd):
                 break
         # 8, 16, 24, or 32 bit
         while True:
-            controllerBits = int(raw_input("How many bits of data per controller (8, 16, 24, or 32)? "))
+            controllerBits = readint("How many bits of data per controller (8, 16, 24, or 32)? ")
             if controllerBits != 8 and controllerBits != 16 and controllerBits != 24 and controllerBits != 32:
                 print("ERROR: Bits must be either 8, 16, 24, or 32!\n")
             else:
                 break
         # overread value
         while True:
-            overread = int(raw_input("Overread value (0 or 1... if unsure choose 0)? "))
+            overread = readint("Overread value (0 or 1... if unsure choose 0)? ")
             if overread != 0 and overread != 1:
                 print("ERROR: Overread be either 0 or 1!\n")
                 continue
@@ -615,7 +638,7 @@ class CLI(cmd.Cmd):
         # dummy frames
         while True:
             try:
-                dummyFrames = int(raw_input("Number of blank input frames to prepend? "))
+                dummyFrames = readint("Number of blank input frames to prepend? ")
                 if window < 0:
                     print("ERROR: Please enter a positive number!\n")
                     continue
@@ -624,8 +647,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter integers!\n")
         # create TASRun object and assign it to our global, defined above
-        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName,
-                        dummyFrames, dpcm_fix)
+        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
         tasRuns.append(tasrun)
         listenPorts.append(min(tasrun.portsList))
 

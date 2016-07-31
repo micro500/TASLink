@@ -43,12 +43,11 @@ MASKS = 'ABCD'
 masksInUse = [0, 0, 0, 0]
 tasRuns = []
 inputBuffers = []
-listenPorts = []
 customCommands = []
 frameCounts = [0, 0, 0, 0]
 
 # For all x in [0,4), tasRuns[x] should always correspond to have customCommands[x].
-# Each tasRuns[x] listens for latch on port listenPorts[x]. Each run has progressed up to frame frameCounts[x].
+# Each tasRuns[x] listens for latch on each of its ports. Each run has progressed up to frame frameCounts[x].
 
 def readint(question):
     num = -1
@@ -85,7 +84,6 @@ def load(filename):
         print("ERROR: Requested ports already in use!")
         return False
     tasRuns.append(run)
-    listenPorts.append(min(run.portsList))
     setupCommunication(tasRuns[-1])
     if TASLINK_CONNECTED == 1:
         send_frames(len(tasRuns) - 1, prebuffer)
@@ -504,7 +502,6 @@ class CLI(cmd.Cmd):
         # remove input and run from lists
         del inputBuffers[index]
         del tasRuns[index]
-        del listenPorts[index]
         del customCommands[index]
 
         # reset frame counts, move them accordingly
@@ -646,7 +643,6 @@ class CLI(cmd.Cmd):
         # create TASRun object and assign it to our global, defined above
         tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
         tasRuns.append(tasrun)
-        listenPorts.append(min(tasrun.portsList))
 
         setupCommunication(tasrun)
         if TASLINK_CONNECTED == 1:
@@ -697,7 +693,6 @@ if TASLINK_CONNECTED and not t.isAlive():
     sys.exit(0)
 
 # t3h urn
-
 if TASLINK_CONNECTED:
     while t.isAlive():
 
@@ -712,11 +707,10 @@ if TASLINK_CONNECTED:
         c = ser.read(numBytes)
         latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
 
-        for run_index, port in enumerate(listenPorts):
-            latches = latchCounts[port]
-            if latches > 0:
-                send_frames(run_index, latches)
-
-sys.exit(0)  # exit cleanly
+        for run_index, run in enumerate(tasRuns):
+            for port in run.portsList:
+                latches = latchCounts[port]
+                if latches > 0:
+                    send_frames(run_index, latches)
 
 # work on 1 run at a time

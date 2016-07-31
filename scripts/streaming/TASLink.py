@@ -130,48 +130,45 @@ class TASRun(object):
         count = 0
         working_string = ""
         numBytes = int(self.controllerBits / 8)
+        bytesPerFrame = numBytes * self.maxControllers # 1 * 2 = 2 for NES, 2 * 8 = 16 for SNES
 
-        maxBytes = numBytes * self.numControllers  # bytes * number of controllers
-
+        numLanes = self.numControllers
         # next we take controller type into account
         if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
-            maxBytes *= 2
+            numLanes *= 2
         elif self.controllerType == CONTROLLER_MULTITAP:
-            maxBytes *= 4
+            numLanes *= 4
+
+        bytesPerCommand = numLanes * numBytes
 
         # add the dummy frames
         for frame in range(self.dummyFrames):
             working_string = customCommand
-            for bytes in range(maxBytes):
+            for bytes in range(bytesPerCommand):
                 working_string += chr(0xFF)
             buffer.append(working_string)
 
-        done = False
         while True:
             if count == 0:
                 working_string = customCommand
-            
-            for each in range(numBytes):
-                b = fh.read(1)  # read one byte
 
-                if len(b) == 0:  # fail case
-                    done = True
-                    break
+            b = fh.read(1)  # read one byte
 
-                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-                working_string += chr(b)  # add our byte data
-
-                count += 1  # note the odd increment timing to make the next check easier
-
-            if done:
+            if len(b) == 0:  # fail case
                 break
 
-            if count >= maxBytes:
-                buffer.append(working_string)
+            b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+            working_string += chr(b)  # add our byte data
+
+            count += 1  # note the odd increment timing to make the next check easier
+
+            if count == bytesPerFrame:
+                # combine the appropriate parts of working_string
+                command_string = working_string[0]
+                for lane in range(numLanes):
+                    command_string += working_string[1+(numBytes)*(lane):1+(numBytes)*(lane+1)] # math magic
+                buffer.append(command_string)
                 count = 0
-                # now ditch bytes from unused controllers as necessary
-                limit = self.maxControllers * numBytes
-                fh.read(limit - maxBytes) # ditched
 
         fh.close()
 

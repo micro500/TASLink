@@ -85,8 +85,8 @@ def load(filename):
         return False
     tasRuns.append(run)
     setupCommunication(tasRuns[-1])
-    if TASLINK_CONNECTED == 1:
-        send_frames(len(tasRuns) - 1, prebuffer)
+
+    send_frames(len(tasRuns) - 1, prebuffer)
 
     print("Run has been successfully loaded!")
 
@@ -519,7 +519,7 @@ class CLI(cmd.Cmd):
             limit = 1
         elif tasrun.controllerType == CONTROLLER_MULTITAP:
             limit = 4
-        else:
+        else: # y-cable
             limit = 2
         for port in tasrun.portsList:
             for counter in range(limit):
@@ -676,8 +676,7 @@ class CLI(cmd.Cmd):
         tasRuns.append(tasrun)
 
         setupCommunication(tasrun)
-        if TASLINK_CONNECTED == 1:
-            send_frames(len(tasRuns) - 1, prebuffer)
+        send_frames(len(tasRuns) - 1, prebuffer)
 
         print("Run is ready to go!")
 
@@ -701,6 +700,10 @@ if TASLINK_CONNECTED:
     except SerialException:
         print ("ERROR: the specified interface (" + sys.argv[1] + ") is in use")
         sys.exit(0)
+
+    # ensure we start with all events disabled
+    for x in range(1,5):
+        ser.write("se"+str(x)+chr(0)+chr(0))
 
 if len(sys.argv) > 2:  # load some initial files!
     for filename in sys.argv[2:]:

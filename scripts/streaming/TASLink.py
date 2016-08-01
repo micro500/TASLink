@@ -163,8 +163,13 @@ class TASRun(object):
             if count == bytesPerFrame:
                 # combine the appropriate parts of working_string
                 command_string = working_string[0]
-                for lane in range(numLanes):
-                    command_string += working_string[1+(numBytes)*(lane):1+(numBytes)*(lane+1)] # math magic
+                for counter in range(self.numControllers):
+                    if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
+                    elif self.controllerType == CONTROLLER_MULTITAP:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
+                    else:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
                 buffer.append(command_string)
                 count = 0
 

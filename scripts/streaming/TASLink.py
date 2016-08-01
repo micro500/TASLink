@@ -113,7 +113,7 @@ class TASRun(object):
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
 
-        self.fileExtension = file_name.split(".")[-1]  # pythonic last element of a list/string/array
+        self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
 
         if self.fileExtension == 'r08':
             self.maxControllers = 2

@@ -146,32 +146,58 @@ class TASRun(object):
                 working_string += chr(0xFF)
             buffer.append(working_string)
 
-        while True:
-            if count == 0:
-                working_string = customCommand
+        if self.fileExtension == 'r08':
+            while True:
+                if count == 0:
+                    working_string = customCommand
 
-            b = fh.read(1)  # read one byte
+                b = fh.read(1)  # read one byte
 
-            if len(b) == 0:  # fail case
-                break
+                if len(b) == 0:  # fail case
+                    break
 
-            b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-            working_string += chr(b)  # add our byte data
+                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+                working_string += chr(b)  # add our byte data
 
-            count += 1  # note the odd increment timing to make the next check easier
+                count += 1  # note the odd increment timing to make the next check easier
 
-            if count == bytesPerFrame:
-                # combine the appropriate parts of working_string
-                command_string = working_string[0]
-                for counter in range(self.numControllers):
-                    if self.controllerType == CONTROLLER_Y or self.controllerType == CONTROLLER_FOUR_SCORE:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
-                    elif self.controllerType == CONTROLLER_MULTITAP:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
-                    else:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
-                buffer.append(command_string)
-                count = 0
+                if count == bytesPerFrame:
+                    # combine the appropriate parts of working_string
+                    command_string = working_string[0]
+                    for counter in range(self.numControllers):
+                        if self.controllerType == CONTROLLER_FOUR_SCORE:
+                            pass # what is a four score?  would probably require a new file format in fact....
+                        else: # normal controller
+                            command_string += working_string[counter+1:counter+2]  # math not-so-magic
+                    buffer.append(command_string)
+                    count = 0
+        elif self.fileExtension == 'r16' or self.fileExtension == 'r16m':
+            while True:
+                if count == 0:
+                    working_string = customCommand
+
+                b = fh.read(1)  # read one byte
+
+                if len(b) == 0:  # fail case
+                    break
+
+                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+                working_string += chr(b)  # add our byte data
+
+                count += 1  # note the odd increment timing to make the next check easier
+
+                if count == bytesPerFrame:
+                    # combine the appropriate parts of working_string
+                    command_string = working_string[0]
+                    for counter in range(self.numControllers):
+                        if self.controllerType == CONTROLLER_Y:
+                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
+                        elif self.controllerType == CONTROLLER_MULTITAP:
+                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
+                        else:
+                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
+                    buffer.append(command_string)
+                    count = 0
 
         fh.close()
 

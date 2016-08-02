@@ -742,9 +742,10 @@ if TASLINK_CONNECTED:
         latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
 
         for run_index, run in enumerate(tasRuns):
-            for port in run.portsList:
-                latches = latchCounts[port]
-                if latches > 0:
-                    send_frames(run_index, latches)
+            #for port in run.portsList:
+            port = min(run.portsList)
+            latches = latchCounts[port]
+            if latches > 0:
+                send_frames(run_index, latches)
 
 # work on 1 run at a time

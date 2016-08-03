@@ -228,6 +228,11 @@ architecture Behavioral of main is
   signal debug_forced : std_logic := '0';
   signal debug_forced_value : std_logic := '0';
   
+  signal debug_counter_enabled : std_logic := '0';
+  
+  signal empty_counter : integer range 0 to 255 := 0;
+  signal empty_counter_out : std_logic_vector(7 downto 0) := (others => '0');
+  
 begin
 
   GENERATE_FILTERS:
@@ -566,6 +571,15 @@ uart_recieve_btye: process(CLK)
 
                 uart_state <= main_cmd;
               
+              when x"78" => -- 'x'
+                if (data_from_uart = x"31") then
+                  debug_counter_enabled <= '1';
+                else
+                  debug_counter_enabled <= '0';
+                end if;
+
+                uart_state <= main_cmd;
+              
               when others =>
                 uart_state <= main_cmd;
               
@@ -755,6 +769,21 @@ uart_recieve_btye: process(CLK)
 			end if;
     end if;
 	end process;
+  
+  process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      if (buffer_empty(1) = '1') then
+        if (empty_counter = 255) then
+          empty_counter <= 0;
+        else
+          empty_counter <= empty_counter + 1;
+        end if;
+        
+        empty_counter_out <= std_logic_vector(to_unsigned(empty_counter, 8));
+      end if;
+    end if;
+  end process;
   
   process (clk) is
     variable latch_q_ms_timer : integer range 0 to 127 := 0;
@@ -1432,7 +1461,8 @@ uart_recieve_btye: process(CLK)
   visualization_data(3)(2) <= not (controller_data(6)(7) & controller_data(6)(6) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & "11111111") when controller_size(6) = "00" else
                               not (controller_data(6)(15) & controller_data(6)(7) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & controller_data(6)(14) & controller_data(6)(6) & controller_data(6)(13) & controller_data(6)(12) & controller_data(6)(11) & controller_data(6)(10) & controller_data(6)(9) & controller_data(6)(8));
   
-  visualization_data(4)(1) <= not (controller_data(7)(7) & controller_data(7)(6) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & "11111111") when controller_size(7) = "00" else
+  visualization_data(4)(1) <= empty_counter_out & "00000000" when debug_counter_enabled = '1' else
+                              not (controller_data(7)(7) & controller_data(7)(6) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & "11111111") when controller_size(7) = "00" else
                               not (controller_data(7)(15) & controller_data(7)(7) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & controller_data(7)(14) & controller_data(7)(6) & controller_data(7)(13) & controller_data(7)(12) & controller_data(7)(11) & controller_data(7)(10) & controller_data(7)(9) & controller_data(7)(8));
   visualization_data(4)(2) <= not (controller_data(8)(7) & controller_data(8)(6) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & "11111111") when controller_size(8) = "00" else
                               not (controller_data(8)(15) & controller_data(8)(7) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & controller_data(8)(14) & controller_data(8)(6) & controller_data(8)(13) & controller_data(8)(12) & controller_data(8)(11) & controller_data(8)(10) & controller_data(8)(9) & controller_data(8)(8));

@@ -1000,10 +1000,10 @@ uart_recieve_btye: process(CLK)
   end process;
 
   
-  buffer_read <= (event_buffer_read_mask(1)(0) & event_buffer_read_mask(1)(1) & event_buffer_read_mask(1)(2) & event_buffer_read_mask(1)(3) & event_buffer_read_mask(1)(4) & event_buffer_read_mask(1)(5) & event_buffer_read_mask(1)(6) & event_buffer_read_mask(1)(7)) or 
-                 (event_buffer_read_mask(2)(0) & event_buffer_read_mask(2)(1) & event_buffer_read_mask(2)(2) & event_buffer_read_mask(2)(3) & event_buffer_read_mask(2)(4) & event_buffer_read_mask(2)(5) & event_buffer_read_mask(2)(6) & event_buffer_read_mask(2)(7)) or
-                 (event_buffer_read_mask(3)(0) & event_buffer_read_mask(3)(1) & event_buffer_read_mask(3)(2) & event_buffer_read_mask(3)(3) & event_buffer_read_mask(3)(4) & event_buffer_read_mask(3)(5) & event_buffer_read_mask(3)(6) & event_buffer_read_mask(3)(7)) or
-                 (event_buffer_read_mask(4)(0) & event_buffer_read_mask(4)(1) & event_buffer_read_mask(4)(2) & event_buffer_read_mask(4)(3) & event_buffer_read_mask(4)(4) & event_buffer_read_mask(4)(5) & event_buffer_read_mask(4)(6) & event_buffer_read_mask(4)(7));
+  buffer_read <= ((event_buffer_read_mask(1)(0) & event_buffer_read_mask(1)(1) & event_buffer_read_mask(1)(2) & event_buffer_read_mask(1)(3) & event_buffer_read_mask(1)(4) & event_buffer_read_mask(1)(5) & event_buffer_read_mask(1)(6) & event_buffer_read_mask(1)(7)) and (1 to 8 => (event_enabled(1)))) or 
+                 ((event_buffer_read_mask(2)(0) & event_buffer_read_mask(2)(1) & event_buffer_read_mask(2)(2) & event_buffer_read_mask(2)(3) & event_buffer_read_mask(2)(4) & event_buffer_read_mask(2)(5) & event_buffer_read_mask(2)(6) & event_buffer_read_mask(2)(7)) and (1 to 8 => (event_enabled(2)))) or
+                 ((event_buffer_read_mask(3)(0) & event_buffer_read_mask(3)(1) & event_buffer_read_mask(3)(2) & event_buffer_read_mask(3)(3) & event_buffer_read_mask(3)(4) & event_buffer_read_mask(3)(5) & event_buffer_read_mask(3)(6) & event_buffer_read_mask(3)(7)) and (1 to 8 => (event_enabled(3)))) or
+                 ((event_buffer_read_mask(4)(0) & event_buffer_read_mask(4)(1) & event_buffer_read_mask(4)(2) & event_buffer_read_mask(4)(3) & event_buffer_read_mask(4)(4) & event_buffer_read_mask(4)(5) & event_buffer_read_mask(4)(6) & event_buffer_read_mask(4)(7)) and (1 to 8 => (event_enabled(4))));
   
   
   
@@ -1040,20 +1040,28 @@ uart_recieve_btye: process(CLK)
       if (uart_buffer_full = '0') then
         if (event_received(1) = '0' and event_signal(1) = '1') then
           event_received(1) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"66"; -- "f"
+          if (event_enabled(1) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"66"; -- "f"
+          end if;
         elsif (event_received(2) = '0' and event_signal(2) = '1') then
           event_received(2) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"67"; -- "g"
+          if (event_enabled(2) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"67"; -- "g"
+          end if;
         elsif (event_received(3) = '0' and event_signal(3) = '1') then
           event_received(3) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"68"; -- "h"
+          if (event_enabled(3) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"68"; -- "h"
+          end if;
         elsif (event_received(4) = '0' and event_signal(4) = '1') then
           event_received(4) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"69"; -- "i"
+          if (event_enabled(4) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"69"; -- "i"
+          end if;
         end if;
       end if;
     end if;

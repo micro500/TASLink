@@ -225,6 +225,9 @@ architecture Behavioral of main is
   
   signal tx : std_logic := '0';
   
+  signal debug_forced : std_logic := '0';
+  signal debug_forced_value : std_logic := '0';
+  
 begin
 
   GENERATE_FILTERS:
@@ -549,6 +552,19 @@ uart_recieve_btye: process(CLK)
               when x"65" => -- 'e'
                 setup_cmd_data(2) <= data_from_uart;
                 uart_state <= setup_cmd_data3;
+                
+              when x"64" => -- 'd'
+                if (data_from_uart = x"31") then
+                  debug_forced <= '1';
+                  debug_forced_value <= '1';
+                elsif (data_from_uart = x"30") then
+                  debug_forced <= '1';
+                  debug_forced_value <= '0';
+                else
+                  debug_forced <= '0';
+                end if;
+
+                uart_state <= main_cmd;
               
               when others =>
                 uart_state <= main_cmd;
@@ -1426,7 +1442,8 @@ uart_recieve_btye: process(CLK)
   debug(1) <= '1';
   debug(2) <= '1';
   debug(3) <= '1';
-  debug(4) <= RX;
+  debug(4) <= RX when debug_forced = '0' else
+              debug_forced_value;
   debug(5) <= tx;
   debug(6) <= '1';
   debug(7) <= '1';

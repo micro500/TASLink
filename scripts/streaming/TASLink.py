@@ -34,7 +34,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -61,6 +61,18 @@ def readint(question):
         break
     return num
 
+def readfloat(question):
+    num = -1
+    while True:
+        ans = raw_input(question)
+        try:
+            num = float(ans)
+        except ValueError:
+            print("ERROR: Expected float, but float not found")
+            continue
+        break
+    return num
+
 def getNextMask():
     for index,letter in enumerate(MASKS):
         if masksInUse[index] == 0:
@@ -83,8 +95,10 @@ def load(filename):
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
         print("ERROR: Requested ports already in use!")
         return False
+
+    # tried switching these two to eliminate the elusive runtime error
+    setupCommunication(run)
     tasRuns.append(run)
-    setupCommunication(tasRuns[-1])
 
     send_frames(len(tasRuns) - 1, prebuffer)
 
@@ -94,7 +108,13 @@ def send_frames(index, amount):
     framecount = frameCounts[index]
 
     if TASLINK_CONNECTED == 1:
-        ser.write(''.join(inputBuffers[index][framecount:(framecount + amount)]))
+        try:
+            ser.write(''.join(inputBuffers[index][framecount:(framecount + amount)]))
+        except IndexError:
+            print("Index error in send_frames. This shouldn't happen.\nDEBUG INFORMATION:")
+            print("Index: "+str(index))
+            print("Amount: "+str(amount))
+            print("len(inputBuffers): "+str(len(inputBuffers)))
     else:
         print("DATA SENT: ", ''.join(inputBuffers[index][framecount:(framecount + amount)]))
 
@@ -652,8 +672,7 @@ class CLI(cmd.Cmd):
             print("ERROR: Please enter y for yes or n for no!\n")
         # window mode 0-15.75ms
         while True:
-            window = float(raw_input(
-                "Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? "))
+            window = readfloat("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? ")
             if window < 0 or window > 15.25:
                 print("ERROR: Window out of range [0, 15.75])!\n")
             elif window % 0.25 != 0:
@@ -742,8 +761,7 @@ if TASLINK_CONNECTED:
         latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
 
         for run_index, run in enumerate(tasRuns):
-            #for port in run.portsList:
-            port = min(run.portsList)
+            port = min(run.portsList) # the same port we have an event listener on
             latches = latchCounts[port]
             if latches > 0:
                 send_frames(run_index, latches)

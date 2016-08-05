@@ -138,7 +138,7 @@ architecture Behavioral of main is
   signal data_receive_mask : std_logic_vector(8 downto 1) := (others => '0');
   signal active_setup_cmd : std_logic_vector(7 downto 0);
   
-  type uart_states is (main_cmd, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
+  type uart_states is (main_cmd, reset_data, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
   signal uart_state : uart_states := main_cmd;
   signal data_controller_id : integer range 1 to 8;
   signal data_byte_id : integer range 1 to 4;
@@ -152,7 +152,7 @@ architecture Behavioral of main is
   signal buffer_read : std_logic_vector(1 to 8);
   signal buffer_empty : std_logic_vector(1 to 8);
   signal buffer_full : std_logic_vector(1 to 8);
-  signal buffer_clear : std_logic_vector(1 to 8);
+  signal buffer_clear : std_logic_vector(8 downto 1);
   
   signal frame_timer_active : std_logic := '0';
   signal frame_timer : integer range 0 to 160000 := 0;
@@ -213,7 +213,7 @@ architecture Behavioral of main is
   signal event_timer_restart : std_logic_vector(1 to 4) := (others => '0');
   type event_lane_mask_arr is array (natural range <>) of std_logic_vector(7 downto 0);
   signal event_buffer_read_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
-  signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '1'));
+  signal event_lane_mask : event_lane_mask_arr(1 to 4) := (others => (others => '0'));
   signal event_timer_active : std_logic_vector(1 to 4) := (others => '0');
   
   type vector16 is array (natural range <>) of std_logic_vector(15 downto 0);
@@ -224,6 +224,14 @@ architecture Behavioral of main is
   signal visualization_clk : std_logic_vector(1 to 4) := (others => '0');
   
   signal tx : std_logic := '0';
+  
+  signal debug_forced : std_logic := '0';
+  signal debug_forced_value : std_logic := '0';
+  
+  signal debug_counter_enabled : std_logic := '0';
+  
+  signal empty_counter : integer range 0 to 255 := 0;
+  signal empty_counter_out : std_logic_vector(7 downto 0) := (others => '0');
   
 begin
 
@@ -463,13 +471,20 @@ uart_recieve_btye: process(CLK)
                 buffer_clear <= "11111111";
                 --uart_state <= main_cmd;
               
+              when x"72" => -- 'r'
+                uart_state <= reset_data;
+              
               when x"73" => -- 's'
                 uart_state <= setup_cmd_data1;
                 
               when others =>
               
             end case;
-                    
+          
+          when reset_data =>
+            buffer_clear <= data_from_uart;
+            uart_state <= main_cmd;
+          
           when button_data_cmd =>
             -- Store this byte of data in the right spot
             if (data_byte_id = 1) then
@@ -542,6 +557,28 @@ uart_recieve_btye: process(CLK)
               when x"65" => -- 'e'
                 setup_cmd_data(2) <= data_from_uart;
                 uart_state <= setup_cmd_data3;
+                
+              when x"64" => -- 'd'
+                if (data_from_uart = x"31") then
+                  debug_forced <= '1';
+                  debug_forced_value <= '1';
+                elsif (data_from_uart = x"30") then
+                  debug_forced <= '1';
+                  debug_forced_value <= '0';
+                else
+                  debug_forced <= '0';
+                end if;
+
+                uart_state <= main_cmd;
+              
+              when x"78" => -- 'x'
+                if (data_from_uart = x"31") then
+                  debug_counter_enabled <= '1';
+                else
+                  debug_counter_enabled <= '0';
+                end if;
+
+                uart_state <= main_cmd;
               
               when others =>
                 uart_state <= main_cmd;
@@ -732,6 +769,21 @@ uart_recieve_btye: process(CLK)
 			end if;
     end if;
 	end process;
+  
+  process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      if (buffer_empty(1) = '1') then
+        if (empty_counter = 255) then
+          empty_counter <= 0;
+        else
+          empty_counter <= empty_counter + 1;
+        end if;
+        
+        empty_counter_out <= std_logic_vector(to_unsigned(empty_counter, 8));
+      end if;
+    end if;
+  end process;
   
   process (clk) is
     variable latch_q_ms_timer : integer range 0 to 127 := 0;
@@ -993,10 +1045,10 @@ uart_recieve_btye: process(CLK)
   end process;
 
   
-  buffer_read <= (event_buffer_read_mask(1)(0) & event_buffer_read_mask(1)(1) & event_buffer_read_mask(1)(2) & event_buffer_read_mask(1)(3) & event_buffer_read_mask(1)(4) & event_buffer_read_mask(1)(5) & event_buffer_read_mask(1)(6) & event_buffer_read_mask(1)(7)) or 
-                 (event_buffer_read_mask(2)(0) & event_buffer_read_mask(2)(1) & event_buffer_read_mask(2)(2) & event_buffer_read_mask(2)(3) & event_buffer_read_mask(2)(4) & event_buffer_read_mask(2)(5) & event_buffer_read_mask(2)(6) & event_buffer_read_mask(2)(7)) or
-                 (event_buffer_read_mask(3)(0) & event_buffer_read_mask(3)(1) & event_buffer_read_mask(3)(2) & event_buffer_read_mask(3)(3) & event_buffer_read_mask(3)(4) & event_buffer_read_mask(3)(5) & event_buffer_read_mask(3)(6) & event_buffer_read_mask(3)(7)) or
-                 (event_buffer_read_mask(4)(0) & event_buffer_read_mask(4)(1) & event_buffer_read_mask(4)(2) & event_buffer_read_mask(4)(3) & event_buffer_read_mask(4)(4) & event_buffer_read_mask(4)(5) & event_buffer_read_mask(4)(6) & event_buffer_read_mask(4)(7));
+  buffer_read <= ((event_buffer_read_mask(1)(0) & event_buffer_read_mask(1)(1) & event_buffer_read_mask(1)(2) & event_buffer_read_mask(1)(3) & event_buffer_read_mask(1)(4) & event_buffer_read_mask(1)(5) & event_buffer_read_mask(1)(6) & event_buffer_read_mask(1)(7)) and (1 to 8 => (event_enabled(1)))) or 
+                 ((event_buffer_read_mask(2)(0) & event_buffer_read_mask(2)(1) & event_buffer_read_mask(2)(2) & event_buffer_read_mask(2)(3) & event_buffer_read_mask(2)(4) & event_buffer_read_mask(2)(5) & event_buffer_read_mask(2)(6) & event_buffer_read_mask(2)(7)) and (1 to 8 => (event_enabled(2)))) or
+                 ((event_buffer_read_mask(3)(0) & event_buffer_read_mask(3)(1) & event_buffer_read_mask(3)(2) & event_buffer_read_mask(3)(3) & event_buffer_read_mask(3)(4) & event_buffer_read_mask(3)(5) & event_buffer_read_mask(3)(6) & event_buffer_read_mask(3)(7)) and (1 to 8 => (event_enabled(3)))) or
+                 ((event_buffer_read_mask(4)(0) & event_buffer_read_mask(4)(1) & event_buffer_read_mask(4)(2) & event_buffer_read_mask(4)(3) & event_buffer_read_mask(4)(4) & event_buffer_read_mask(4)(5) & event_buffer_read_mask(4)(6) & event_buffer_read_mask(4)(7)) and (1 to 8 => (event_enabled(4))));
   
   
   
@@ -1033,20 +1085,28 @@ uart_recieve_btye: process(CLK)
       if (uart_buffer_full = '0') then
         if (event_received(1) = '0' and event_signal(1) = '1') then
           event_received(1) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"66"; -- "f"
+          if (event_enabled(1) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"66"; -- "f"
+          end if;
         elsif (event_received(2) = '0' and event_signal(2) = '1') then
           event_received(2) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"67"; -- "g"
+          if (event_enabled(2) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"67"; -- "g"
+          end if;
         elsif (event_received(3) = '0' and event_signal(3) = '1') then
           event_received(3) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"68"; -- "h"
+          if (event_enabled(3) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"68"; -- "h"
+          end if;
         elsif (event_received(4) = '0' and event_signal(4) = '1') then
           event_received(4) <= '1';
-          uart_write <= '1';
-          data_to_uart <= x"69"; -- "i"
+          if (event_enabled(4) = '1') then
+            uart_write <= '1';
+            data_to_uart <= x"69"; -- "i"
+          end if;
         end if;
       end if;
     end if;
@@ -1386,24 +1446,34 @@ uart_recieve_btye: process(CLK)
   visualization_d0(4) <= visualization_dout(4)(1);
   visualization_d1(4) <= visualization_dout(4)(2);
   
-  visualization_data(1)(1) <= not (controller_data(1)(7) & controller_data(1)(6) & controller_data(1)(5) & controller_data(1)(4) & controller_data(1)(3) & controller_data(1)(2) & controller_data(1)(1) & controller_data(1)(0) & "11111111");
-  visualization_data(1)(2) <= not (controller_data(2)(7) & controller_data(2)(6) & controller_data(2)(5) & controller_data(2)(4) & controller_data(2)(3) & controller_data(2)(2) & controller_data(2)(1) & controller_data(2)(0) & "11111111");
+  visualization_data(1)(1) <= not (controller_data(1)(7) & controller_data(1)(6) & controller_data(1)(5) & controller_data(1)(4) & controller_data(1)(3) & controller_data(1)(2) & controller_data(1)(1) & controller_data(1)(0) & "11111111") when controller_size(1) = "00" else
+                              not (controller_data(1)(15) & controller_data(1)(7) & controller_data(1)(5) & controller_data(1)(4) & controller_data(1)(3) & controller_data(1)(2) & controller_data(1)(1) & controller_data(1)(0) & controller_data(1)(14) & controller_data(1)(6) & controller_data(1)(13) & controller_data(1)(12) & controller_data(1)(11) & controller_data(1)(10) & controller_data(1)(9) & controller_data(1)(8));
+  visualization_data(1)(2) <= not (controller_data(2)(7) & controller_data(2)(6) & controller_data(2)(5) & controller_data(2)(4) & controller_data(2)(3) & controller_data(2)(2) & controller_data(2)(1) & controller_data(2)(0) & "11111111") when controller_size(2) = "00" else
+                              not (controller_data(2)(15) & controller_data(2)(7) & controller_data(2)(5) & controller_data(2)(4) & controller_data(2)(3) & controller_data(2)(2) & controller_data(2)(1) & controller_data(2)(0) & controller_data(2)(14) & controller_data(2)(6) & controller_data(2)(13) & controller_data(2)(12) & controller_data(2)(11) & controller_data(2)(10) & controller_data(2)(9) & controller_data(2)(8));
   
-  visualization_data(2)(1) <= not (controller_data(3)(7) & controller_data(3)(6) & controller_data(3)(5) & controller_data(3)(4) & controller_data(3)(3) & controller_data(3)(2) & controller_data(3)(1) & controller_data(3)(0) & "11111111");
-  visualization_data(2)(2) <= not (controller_data(4)(7) & controller_data(4)(6) & controller_data(4)(5) & controller_data(4)(4) & controller_data(4)(3) & controller_data(4)(2) & controller_data(4)(1) & controller_data(4)(0) & "11111111");
+  visualization_data(2)(1) <= not (controller_data(3)(7) & controller_data(3)(6) & controller_data(3)(5) & controller_data(3)(4) & controller_data(3)(3) & controller_data(3)(2) & controller_data(3)(1) & controller_data(3)(0) & "11111111") when controller_size(3) = "00" else
+                              not (controller_data(3)(15) & controller_data(3)(7) & controller_data(3)(5) & controller_data(3)(4) & controller_data(3)(3) & controller_data(3)(2) & controller_data(3)(1) & controller_data(3)(0) & controller_data(3)(14) & controller_data(3)(6) & controller_data(3)(13) & controller_data(3)(12) & controller_data(3)(11) & controller_data(3)(10) & controller_data(3)(9) & controller_data(3)(8));
+  visualization_data(2)(2) <= not (controller_data(4)(7) & controller_data(4)(6) & controller_data(4)(5) & controller_data(4)(4) & controller_data(4)(3) & controller_data(4)(2) & controller_data(4)(1) & controller_data(4)(0) & "11111111") when controller_size(4) = "00" else
+                              not (controller_data(4)(15) & controller_data(4)(7) & controller_data(4)(5) & controller_data(4)(4) & controller_data(4)(3) & controller_data(4)(2) & controller_data(4)(1) & controller_data(4)(0) & controller_data(4)(14) & controller_data(4)(6) & controller_data(4)(13) & controller_data(4)(12) & controller_data(4)(11) & controller_data(4)(10) & controller_data(4)(9) & controller_data(4)(8));
   
-  visualization_data(3)(1) <= not (controller_data(5)(7) & controller_data(5)(6) & controller_data(5)(5) & controller_data(5)(4) & controller_data(5)(3) & controller_data(5)(2) & controller_data(5)(1) & controller_data(5)(0) & "11111111");
-  visualization_data(3)(2) <= not (controller_data(6)(7) & controller_data(6)(6) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & "11111111");
+  visualization_data(3)(1) <= not (controller_data(5)(7) & controller_data(5)(6) & controller_data(5)(5) & controller_data(5)(4) & controller_data(5)(3) & controller_data(5)(2) & controller_data(5)(1) & controller_data(5)(0) & "11111111") when controller_size(5) = "00" else
+                              not (controller_data(5)(15) & controller_data(5)(7) & controller_data(5)(5) & controller_data(5)(4) & controller_data(5)(3) & controller_data(5)(2) & controller_data(5)(1) & controller_data(5)(0) & controller_data(5)(14) & controller_data(5)(6) & controller_data(5)(13) & controller_data(5)(12) & controller_data(5)(11) & controller_data(5)(10) & controller_data(5)(9) & controller_data(5)(8));
+  visualization_data(3)(2) <= not (controller_data(6)(7) & controller_data(6)(6) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & "11111111") when controller_size(6) = "00" else
+                              not (controller_data(6)(15) & controller_data(6)(7) & controller_data(6)(5) & controller_data(6)(4) & controller_data(6)(3) & controller_data(6)(2) & controller_data(6)(1) & controller_data(6)(0) & controller_data(6)(14) & controller_data(6)(6) & controller_data(6)(13) & controller_data(6)(12) & controller_data(6)(11) & controller_data(6)(10) & controller_data(6)(9) & controller_data(6)(8));
   
-  visualization_data(4)(1) <= not (controller_data(7)(7) & controller_data(7)(6) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & "11111111");
-  visualization_data(4)(2) <= not (controller_data(8)(7) & controller_data(8)(6) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & "11111111");
+  visualization_data(4)(1) <= empty_counter_out & "00000000" when debug_counter_enabled = '1' else
+                              not (controller_data(7)(7) & controller_data(7)(6) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & "11111111") when controller_size(7) = "00" else
+                              not (controller_data(7)(15) & controller_data(7)(7) & controller_data(7)(5) & controller_data(7)(4) & controller_data(7)(3) & controller_data(7)(2) & controller_data(7)(1) & controller_data(7)(0) & controller_data(7)(14) & controller_data(7)(6) & controller_data(7)(13) & controller_data(7)(12) & controller_data(7)(11) & controller_data(7)(10) & controller_data(7)(9) & controller_data(7)(8));
+  visualization_data(4)(2) <= not (controller_data(8)(7) & controller_data(8)(6) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & "11111111") when controller_size(8) = "00" else
+                              not (controller_data(8)(15) & controller_data(8)(7) & controller_data(8)(5) & controller_data(8)(4) & controller_data(8)(3) & controller_data(8)(2) & controller_data(8)(1) & controller_data(8)(0) & controller_data(8)(14) & controller_data(8)(6) & controller_data(8)(13) & controller_data(8)(12) & controller_data(8)(11) & controller_data(8)(10) & controller_data(8)(9) & controller_data(8)(8));
 
 
   debug(0) <= '1';
   debug(1) <= '1';
   debug(2) <= '1';
   debug(3) <= '1';
-  debug(4) <= RX;
+  debug(4) <= RX when debug_forced = '0' else
+              debug_forced_value;
   debug(5) <= tx;
   debug(6) <= '1';
   debug(7) <= '1';

@@ -46,8 +46,10 @@ inputBuffers = []
 customCommands = []
 frameCounts = [0, 0, 0, 0]
 
+selected_run = -1
+
 # For all x in [0,4), tasRuns[x] should always correspond to have customCommands[x].
-# Each tasRuns[x] listens for latch on each of its ports. Each run has progressed up to frame frameCounts[x].
+# Each tasRuns[x] listens for latch on the min of of its ports. Each run has progressed up to frame frameCounts[x].
 
 def readint(question):
     num = -1
@@ -89,6 +91,8 @@ def freeMask(letter):
 
 
 def load(filename):
+    global selected_run
+
     with open(filename, 'r') as f:
         run = yaml.load(f)
     # check for port conflicts
@@ -100,7 +104,9 @@ def load(filename):
     setupCommunication(run)
     tasRuns.append(run)
 
-    send_frames(len(tasRuns) - 1, prebuffer)
+    selected_run = len(tasRuns) - 1
+
+    send_frames(selected_run, prebuffer)
 
     print("Run has been successfully loaded!")
 
@@ -363,6 +369,14 @@ class CLI(cmd.Cmd):
     prompt = "TASLink> "
     intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
+    def postcmd(self, stop, line):
+        if (selected_run == -1):
+            self.prompt = "TASLink> "
+        else:
+            self.prompt = "TASLink[" + str(selected_run + 1) + "]> "
+
+        return stop
+
     def complete(self, text, state):
         if state == 0:
             origline = readline.get_line_buffer()
@@ -411,15 +425,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            self.do_list(None)
-            # ask which run to save
-            runID = -1
-            while True:
-                runID = readint("Which run # do you want to save? ")
-                if runID > 0 and runID <= len(tasRuns): # confirm valid run number
-                    break
-                else:
-                    print("ERROR: Invalid run number!")
+            runID = selected_run
 
         filename = raw_input("Please enter filename: ")
 
@@ -446,15 +452,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            self.do_list(None)
-            # ask which run to modify
-            runID = -1
-            while True:
-                runID = readint("Which run # do you want to modify? ")
-                if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
-                    break
-                else:
-                    print("ERROR: Invalid run number!")
+            runID = selected_run
         index = runID - 1
         run = tasRuns[index]
         print("The current number of initial blank frames is : " + str(run.dummyFrames))
@@ -512,27 +510,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            self.do_list(None)
-            while True:
-                answer = raw_input("Which run # do you want to reset (or all)? ")
-                if answer.lower() == 'all':
-                    if TASLINK_CONNECTED:
-                        ser.write("R")
-                    else:
-                        print("R")
-                    frameCounts = [0, 0, 0, 0]
-                    for index in range(len(tasRuns)):
-                        send_frames(index, prebuffer)  # re-pre-buffer-!
-                    print("Reset command given to all runs!")
-                    return False
-                try:
-                    runID = int(answer)
-                    if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
-                        break
-                    else:
-                        print("ERROR: Invalid run number!")
-                except ValueError:
-                    print("ERROR: Please enter 'all' or an integer!\n")
+            runID = selected_run
         index = runID - 1
         # get the lane mask
         controllers = list('00000000')
@@ -561,6 +539,7 @@ class CLI(cmd.Cmd):
 
     def do_remove(self, data):
         """Remove one of the current runs."""
+        global selected_run
         # print options
         if not tasRuns:
             print("No currently active runs.")
@@ -577,15 +556,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            self.do_list(None)
-            # ask which run to end
-            runID = -1
-            while True:
-                runID = readint("Which run # do you want to end? ")
-                if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
-                    break
-                else:
-                    print("ERROR: Invalid run number!")
+            runID = selected_run
         index = runID - 1
         # make the mask
         controllers = list('00000000')
@@ -621,6 +592,8 @@ class CLI(cmd.Cmd):
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
+        selected_run -= 1 # even if there is only 1 run, it will go to -1, signiling we have no more runs
+
         print("Run has been successfully removed!")
 
     def do_load(self, data):
@@ -644,8 +617,33 @@ class CLI(cmd.Cmd):
             print yaml.dump(run)
         pass
 
+    def do_select(self, data):
+        """Select a run to modify with other commands"""
+        global selected_run
+        if data != "":
+            # confirm integer
+            try:
+                runID = int(data)
+            except ValueError:
+                print("ERROR: Please enter an integer!\n")
+                return False
+            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                pass
+            else:
+                print("ERROR: Invalid run number!")
+                return False
+        else:
+            while True:
+                runID = readint("Which run # do you want to save? ")
+                if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                    break
+                else:
+                    print("ERROR: Invalid run number!")
+        selected_run = runID - 1
+
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
+        global selected_run
         # get input file
         while True:
             fileName = raw_input("What is the input file (path to filename) ? ")
@@ -751,7 +749,9 @@ class CLI(cmd.Cmd):
         setupCommunication(tasrun)
         tasRuns.append(tasrun)
 
-        send_frames(len(tasRuns) - 1, prebuffer)
+        selected_run = len(tasRuns) - 1
+
+        send_frames(selected_run, prebuffer)
 
         print("Run is ready to go!")
 

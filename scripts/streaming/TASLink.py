@@ -34,7 +34,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -400,7 +400,11 @@ class CLI(cmd.Cmd):
             print("No currently active runs.")
             return False
         if data != "":
-            runID = data
+            try:
+                runID = int(data)
+            except ValueError:
+                print("ERROR: Invalid run number!")
+                return False
             if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
@@ -431,7 +435,11 @@ class CLI(cmd.Cmd):
             print("No currently active runs.")
             return False
         if data != "":
-            runID = data
+            try:
+                runID = int(data)
+            except ValueError:
+                print("ERROR: Invalid run number!")
+                pass
             if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
@@ -498,6 +506,11 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter 'all' or an integer!\n")
                 return False
+            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                pass
+            else:
+                print("ERROR: Invalid run number!")
+                return False
         else:
             self.do_list(None)
             while True:
@@ -553,7 +566,11 @@ class CLI(cmd.Cmd):
             print("No currently active runs.")
             return False
         if data != "":
-            runID = data
+            try:
+                runID = int(data)
+            except ValueError:
+                print("ERROR: Invalid run number!")
+                return False
             if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:

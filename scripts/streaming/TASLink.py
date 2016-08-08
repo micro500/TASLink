@@ -17,7 +17,7 @@ def complete(text, state):
 
 
 def complete_nostate(text, *ignored):
-    return (glob.glob(text + '*') + [None])
+    return glob.glob(text + '*') + [None]
 
 
 readline.set_completer_delims(' \t\n')
@@ -370,7 +370,7 @@ class CLI(cmd.Cmd):
     intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
     def postcmd(self, stop, line):
-        if (selected_run == -1):
+        if selected_run == -1:
             self.prompt = "TASLink> "
         else:
             self.prompt = "TASLink[" + str(selected_run + 1) + "]> "
@@ -419,7 +419,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 return False
-            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -446,7 +446,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 pass
-            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -504,7 +504,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter 'all' or an integer!\n")
                 return False
-            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -550,7 +550,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 return False
-            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -627,7 +627,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter an integer!\n")
                 return False
-            if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(tasRuns):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -635,7 +635,7 @@ class CLI(cmd.Cmd):
         else:
             while True:
                 runID = readint("Which run # do you want to save? ")
-                if runID > 0 and runID <= len(tasRuns):  # confirm valid run number
+                if 0 < runID <= len(tasRuns):  # confirm valid run number
                     break
                 else:
                     print("ERROR: Invalid run number!")

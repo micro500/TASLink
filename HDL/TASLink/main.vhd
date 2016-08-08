@@ -1053,6 +1053,8 @@ uart_recieve_btye: process(CLK)
   
   
   process (clk) is
+    variable last_event : integer range 1 to 4 := 1;
+    variable next_event : integer range 0 to 4 := 0;
   begin
     if (rising_edge(clk)) then
       uart_write <= '0';
@@ -1082,31 +1084,32 @@ uart_recieve_btye: process(CLK)
         end if;
       end if;
       
-      if (uart_buffer_full = '0') then
-        if (event_received(1) = '0' and event_signal(1) = '1') then
-          event_received(1) <= '1';
-          if (event_enabled(1) = '1') then
+      next_event := 0;
+      
+      if (uart_write = '0' and uart_buffer_full = '0') then
+        if (last_event = 1 and event_received(2) = '0' and event_signal(2) = '1') then
+          next_event := 2;
+        elsif (last_event <= 2 and event_received(3) = '0' and event_signal(3) = '1') then
+          next_event := 3;
+        elsif (last_event <= 3 and event_received(4) = '0' and event_signal(4) = '1') then
+          next_event := 4;
+        elsif (last_event <= 4 and event_received(1) = '0' and event_signal(1) = '1') then
+          next_event := 1;
+        elsif (last_event > 1 and event_received(2) = '0' and event_signal(2) = '1') then
+          next_event := 2;
+        elsif (last_event > 2 and event_received(3) = '0' and event_signal(3) = '1') then
+          next_event := 3;
+        elsif (last_event > 3 and event_received(4) = '0' and event_signal(4) = '1') then
+          next_event := 4;
+        end if;
+        
+        if (next_event /= 0) then
+          event_received(next_event) <= '1';
+          if (event_enabled(next_event) = '1') then
             uart_write <= '1';
-            data_to_uart <= x"66"; -- "f"
+            data_to_uart <= std_logic_vector(to_unsigned(101 + next_event, 8)); -- 'e' + next_event (event 1 == 'f')
           end if;
-        elsif (event_received(2) = '0' and event_signal(2) = '1') then
-          event_received(2) <= '1';
-          if (event_enabled(2) = '1') then
-            uart_write <= '1';
-            data_to_uart <= x"67"; -- "g"
-          end if;
-        elsif (event_received(3) = '0' and event_signal(3) = '1') then
-          event_received(3) <= '1';
-          if (event_enabled(3) = '1') then
-            uart_write <= '1';
-            data_to_uart <= x"68"; -- "h"
-          end if;
-        elsif (event_received(4) = '0' and event_signal(4) = '1') then
-          event_received(4) <= '1';
-          if (event_enabled(4) = '1') then
-            uart_write <= '1';
-            data_to_uart <= x"69"; -- "i"
-          end if;
+          last_event := next_event;
         end if;
       end if;
     end if;

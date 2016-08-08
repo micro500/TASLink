@@ -76,7 +76,7 @@ tx: process (clk)
 	end process;
 
 tx_out <= tx_buffer(0);
-tx_buffer_full <= writing;
+tx_buffer_full <= writing or new_byte_to_send;
 
 rx_ack: process (clk)
 	begin

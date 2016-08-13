@@ -598,7 +598,7 @@ class CLI(cmd.Cmd):
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
-        selected_run -= 1 # even if there is only 1 run, it will go to -1, signaling we have no more runs
+        selected_run = len(tasRuns) - 1 # even if there was only 1 run, it will go to -1, signaling we have no more runs
 
         print("Run has been successfully removed!")
 

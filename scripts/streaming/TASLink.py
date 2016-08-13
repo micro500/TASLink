@@ -366,7 +366,7 @@ def releaseConsolePort(port, type):
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
-     def __init__(self):
+    def __init__(self):
         cmd.Cmd.__init__(self)
         if selected_run == -1:
             self.prompt = "TASLink> "

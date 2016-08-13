@@ -626,6 +626,11 @@ class CLI(cmd.Cmd):
     def do_select(self, data):
         """Select a run to modify with other commands"""
         global selected_run
+
+        if not tasRuns:
+            print("No currently active runs.")
+            return False
+
         if data != "":
             # confirm integer
             try:
@@ -640,7 +645,7 @@ class CLI(cmd.Cmd):
                 return False
         else:
             while True:
-                runID = readint("Which run # do you want to save? ")
+                runID = readint("Which run # do you want to select? ")
                 if 0 < runID <= len(tasRuns):  # confirm valid run number
                     break
                 else:

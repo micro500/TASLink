@@ -425,7 +425,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            runID = selected_run
+            runID = selected_run + 1
 
         filename = raw_input("Please enter filename: ")
 
@@ -452,7 +452,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            runID = selected_run
+            runID = selected_run + 1
         index = runID - 1
         run = tasRuns[index]
         print("The current number of initial blank frames is : " + str(run.dummyFrames))
@@ -510,7 +510,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            runID = selected_run
+            runID = selected_run + 1
         index = runID - 1
         # get the lane mask
         controllers = list('00000000')
@@ -556,7 +556,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Invalid run number!")
                 return False
         else:
-            runID = selected_run
+            runID = selected_run + 1
         index = runID - 1
         # make the mask
         controllers = list('00000000')
@@ -592,7 +592,7 @@ class CLI(cmd.Cmd):
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
-        selected_run -= 1 # even if there is only 1 run, it will go to -1, signiling we have no more runs
+        selected_run -= 1 # even if there is only 1 run, it will go to -1, signaling we have no more runs
 
         print("Run has been successfully removed!")
 
@@ -655,7 +655,7 @@ class CLI(cmd.Cmd):
         while True:
             try:
                 breakout = True
-                portsList = raw_input("Which physical controller port numbers will you use (1-4, commas or spaces between port numbers)? ")
+                portsList = raw_input("Which physical controller port numbers will you use (1-4, commas between port numbers)? ")
                 portsList = map(int, portsList.split(","))  # splits by commas or spaces, then convert to int
                 numControllers = len(portsList)
                 for port in portsList:

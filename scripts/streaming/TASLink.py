@@ -5,6 +5,7 @@ import sys
 import cmd
 import threading
 import yaml
+import math
 
 # import time # used for sleeps in debugging
 
@@ -34,7 +35,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -149,12 +150,13 @@ class TASRun(object):
             self.maxControllers = 1  # random default, but truly we need to support other formats
 
     def getInputBuffer(self, customCommand):
-        fh = open(self.inputFile, 'rb')
-        buffer = []  # create a new empty buffer
+        with open(self.inputFile, 'rb') as myfile:
+            wholefile = myfile.read()
         count = 0
         working_string = ""
         numBytes = int(self.controllerBits / 8)
         bytesPerFrame = numBytes * self.maxControllers # 1 * 2 = 2 for NES, 2 * 8 = 16 for SNES
+        buffer = [""] * (int(len(wholefile) / bytesPerFrame) + self.dummyFrames)  # create a new empty buffer
 
         numLanes = self.numControllers
         # next we take controller type into account
@@ -170,62 +172,55 @@ class TASRun(object):
             working_string = customCommand
             for bytes in range(bytesPerCommand):
                 working_string += chr(0xFF)
-            buffer.append(working_string)
+            buffer[frame] = working_string
+
+        frameno = 0
+        invertedfile = [""] * len(wholefile)
+        for index, b in enumerate(wholefile):
+            invertedfile[index] = chr(~ord(b) & 0xFF)  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
 
         if self.fileExtension == 'r08':
             while True:
-                if count == 0:
-                    working_string = customCommand
+                working_string = customCommand
 
-                b = fh.read(1)  # read one byte
+                one_frame = invertedfile[frameno * 2:frameno * 2 + 2]
 
-                if len(b) == 0:  # fail case
+                if len(one_frame) != 2:  # fail case
                     break
 
-                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-                working_string += chr(b)  # add our byte data
+                working_string += ''.join(one_frame)
 
-                count += 1  # note the odd increment timing to make the next check easier
-
-                if count == bytesPerFrame:
-                    # combine the appropriate parts of working_string
-                    command_string = working_string[0]
-                    for counter in range(self.numControllers):
-                        if self.controllerType == CONTROLLER_FOUR_SCORE:
-                            pass # what is a four score?  would probably require a new file format in fact....
-                        else: # normal controller
-                            command_string += working_string[counter+1:counter+2]  # math not-so-magic
-                    buffer.append(command_string)
-                    count = 0
+                # combine the appropriate parts of working_string
+                command_string = working_string[0]
+                for counter in range(self.numControllers):
+                    if self.controllerType == CONTROLLER_FOUR_SCORE:
+                        pass # what is a four score?  would probably require a new file format in fact....
+                    else: # normal controller
+                        command_string += working_string[counter+1:counter+2]  # math not-so-magic
+                buffer[frameno+self.dummyFrames] = command_string
+                frameno += 1
         elif self.fileExtension == 'r16' or self.fileExtension == 'r16m':
             while True:
-                if count == 0:
-                    working_string = customCommand
+                working_string = customCommand
 
-                b = fh.read(1)  # read one byte
+                one_frame = invertedfile[frameno*16:frameno*16+16]
 
-                if len(b) == 0:  # fail case
+                if len(one_frame) != 16:  # fail case
                     break
 
-                b = ~ord(b) & 0xFF  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-                working_string += chr(b)  # add our byte data
+                working_string += ''.join(one_frame)
 
-                count += 1  # note the odd increment timing to make the next check easier
-
-                if count == bytesPerFrame:
-                    # combine the appropriate parts of working_string
-                    command_string = working_string[0]
-                    for counter in range(self.numControllers):
-                        if self.controllerType == CONTROLLER_Y:
-                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
-                        elif self.controllerType == CONTROLLER_MULTITAP:
-                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
-                        else:
-                            command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
-                    buffer.append(command_string)
-                    count = 0
-
-        fh.close()
+                # combine the appropriate parts of working_string
+                command_string = working_string[0]
+                for counter in range(self.numControllers):
+                    if self.controllerType == CONTROLLER_Y:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
+                    elif self.controllerType == CONTROLLER_MULTITAP:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
+                    else:
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
+                buffer[frameno+self.dummyFrames] = command_string
+                frameno += 1
 
         return buffer
 

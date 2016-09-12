@@ -321,7 +321,7 @@ def isConsolePortAvailable(port, type):
         if consoleLanes[lanes[port][0]]:
             return False
     elif type == CONTROLLER_MULTITAP:
-        if port != 1 or port != 2:  # multitap only works on ports 1 and 2
+        if port != 1 and port != 2:  # multitap only works on ports 1 and 2
             return False
         if any(consoleLanes[lanes[port][x]] for x in range(4)):
             return False
@@ -475,7 +475,7 @@ class CLI(cmd.Cmd):
             for count in range(difference):
                 inputBuffers[index].insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
-            inputBuffers[index] = inputBuffers[index][difference:]
+            inputBuffers[index] = inputBuffers[index][-difference:]
 
         print("Run has been updated. Remember to save if you want this change to be permanent!")
 

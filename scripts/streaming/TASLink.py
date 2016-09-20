@@ -435,6 +435,12 @@ class CLI(cmd.Cmd):
 
         print("Save complete!")
 
+    def do_console_off(self, data):
+        ser.write("sd1")
+
+    def do_console_on(self, data):
+        ser.write("sd0")
+
     def do_modify_frames(self, data):
         """Modify the initial blank input frames"""
         # print options

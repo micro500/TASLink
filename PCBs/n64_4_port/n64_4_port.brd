@@ -16,8 +16,8 @@
 <layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="yes"/>
-<layer number="23" name="tOrigins" color="15" fill="1" visible="no" active="yes"/>
-<layer number="24" name="bOrigins" color="15" fill="1" visible="no" active="yes"/>
+<layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="yes"/>
+<layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="25" name="tNames" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="26" name="bNames" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="27" name="tValues" color="7" fill="1" visible="yes" active="yes"/>
@@ -215,10 +215,10 @@
 <text x="36.957" y="58.293" size="1.27" layer="21" font="vector" ratio="16" align="bottom-center">Controller</text>
 <text x="36.957" y="56.515" size="1.27" layer="21" font="vector" ratio="16" align="bottom-center">link</text>
 <text x="51.816" y="58.293" size="1.27" layer="21" font="vector" ratio="16" align="bottom-center">Controller</text>
-<text x="33.909" y="23.495" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">1</text>
-<text x="33.909" y="32.766" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">2</text>
-<text x="33.909" y="42.037" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">3</text>
-<text x="33.909" y="51.308" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">4</text>
+<text x="33.655" y="23.495" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">1</text>
+<text x="33.655" y="32.766" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">2</text>
+<text x="33.655" y="42.037" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">3</text>
+<text x="33.655" y="51.308" size="1.778" layer="21" font="vector" ratio="16" rot="SR270" align="top-center">4</text>
 <wire x1="47.65675" y1="35.4965" x2="47.65675" y2="39.3065" width="0.3048" layer="21"/>
 <wire x1="47.65675" y1="39.3065" x2="47.02175" y2="38.6715" width="0.3048" layer="21"/>
 <wire x1="47.65675" y1="39.3065" x2="48.29175" y2="38.6715" width="0.3048" layer="21"/>
@@ -1608,7 +1608,7 @@ Please make sure your boards conform to these design rules.</description>
 <param name="mlMaxStopFrame" value="3mil"/>
 <param name="mlMinCreamFrame" value="0mil"/>
 <param name="mlMaxCreamFrame" value="0mil"/>
-<param name="mlViaStopLimit" value="15mil"/>
+<param name="mlViaStopLimit" value="20mil"/>
 <param name="srRoundness" value="0"/>
 <param name="srMinRoundness" value="0mil"/>
 <param name="srMaxRoundness" value="0mil"/>
@@ -2157,7 +2157,7 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="55.118" y1="20.193" x2="55.118" y2="28.4988" width="0.6096" layer="1"/>
 <wire x1="55.118" y1="28.4988" x2="53.34" y2="30.2768" width="0.6096" layer="1"/>
 <wire x1="31.496" y1="7.239" x2="34.417" y2="10.16" width="0.6096" layer="16"/>
-<via x="34.417" y="10.16" extent="1-16" drill="0.3556"/>
+<via x="34.417" y="10.16" extent="1-16" drill="0.508"/>
 <wire x1="34.417" y1="10.16" x2="35.726" y2="11.469" width="0.6096" layer="1"/>
 <wire x1="35.726" y1="11.469" x2="35.726" y2="15.7836" width="0.6096" layer="1"/>
 <wire x1="36.83" y1="17.78" x2="52.705" y2="17.78" width="0.6096" layer="1"/>
@@ -2222,7 +2222,7 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="67.222" y1="15.7836" x2="67.222" y2="11.469" width="0.6096" layer="1"/>
 <wire x1="67.222" y1="15.7836" x2="65.716" y2="15.7836" width="0.6096" layer="1"/>
 <wire x1="60.706" y1="9.525" x2="62.992" y2="7.239" width="0.6096" layer="16"/>
-<via x="60.706" y="9.525" extent="1-16" drill="0.3556"/>
+<via x="60.706" y="9.525" extent="1-16" drill="0.508"/>
 <wire x1="60.706" y1="9.525" x2="57.658" y2="12.573" width="0.6096" layer="1"/>
 </signal>
 <signal name="CP4_DATA">

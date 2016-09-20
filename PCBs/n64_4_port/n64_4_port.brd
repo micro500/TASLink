@@ -201,7 +201,7 @@
 <text x="4.064" y="42.164" size="1.016" layer="21" font="vector" ratio="16" rot="R270" align="center">GND</text>
 <wire x1="4.064" y1="40.132" x2="4.064" y2="37.592" width="0.254" layer="21"/>
 <wire x1="4.064" y1="46.736" x2="4.064" y2="44.196" width="0.254" layer="21"/>
-<text x="51.816" y="56.515" size="1.27" layer="21" font="vector" ratio="16" rot="SR0" align="bottom-center">Power</text>
+<text x="51.816" y="56.515" size="1.27" layer="21" font="vector" ratio="16" rot="SR0" align="bottom-center">power</text>
 <wire x1="45.9105" y1="59.69" x2="45.9105" y2="19.05" width="0.3048" layer="21" style="shortdash"/>
 <text x="47.65675" y="40.513" size="1.27" layer="21" font="vector" ratio="16" rot="SR270" align="center-right">FPGA</text>
 <text x="47.65675" y="34.29" size="1.27" layer="21" font="vector" ratio="16" rot="SR270" align="center-left">Console</text>

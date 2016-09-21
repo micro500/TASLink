@@ -8634,16 +8634,47 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 </sheet>
 </sheets>
 <errors>
-<approved hash="104,1,-81.28,53.34,U1P,VCC,+3V3,,,"/>
-<approved hash="104,1,-22.86,-22.86,U2G$2,VCC,CP1_+3V3,,,"/>
-<approved hash="104,1,-10.16,-22.86,U4G$2,VCC,CP2_+3V3,,,"/>
-<approved hash="104,1,-22.86,-83.82,U7G$2,VCC,CP3_+3V3,,,"/>
-<approved hash="104,1,-10.16,-83.82,U8G$2,VCC,CP4_+3V3,,,"/>
-<approved hash="115,1,149.183,-65.8453,JP12,,,,,"/>
-<approved hash="115,1,227.923,-16.3153,JP2,,,,,"/>
-<approved hash="115,1,227.923,-37.9053,JP7,,,,,"/>
-<approved hash="115,1,227.923,-55.6853,JP8,,,,,"/>
-<approved hash="115,1,149.183,-27.7453,JP13,,,,,"/>
+<approved hash="104,1,88.9,17.78,U1P,VCC,+3V3,,,"/>
+<approved hash="104,1,-25.4,-5.08,U2G$2,VCC,CP1_+3V3,,,"/>
+<approved hash="104,1,-12.7,-5.08,U4G$2,VCC,CP2_+3V3,,,"/>
+<approved hash="104,1,-25.4,-66.04,U7G$2,VCC,CP3_+3V3,,,"/>
+<approved hash="104,1,-12.7,-66.04,U8G$2,VCC,CP4_+3V3,,,"/>
+<approved hash="104,1,353.06,-5.08,U3G$2,VCC,CTP1_+3V3,,,"/>
+<approved hash="104,1,365.76,-5.08,U5G$2,VCC,CTP2_+3V3,,,"/>
+<approved hash="104,1,353.06,-66.04,U6G$2,VCC,CTP3_+3V3,,,"/>
+<approved hash="104,1,365.76,-66.04,U9G$2,VCC,CTP4_+3V3,,,"/>
+<approved hash="106,1,198.12,-241.3,VP1_CLOCK,,,,,"/>
+<approved hash="106,1,256.54,-241.3,VP1_D0,,,,,"/>
+<approved hash="106,1,256.54,-238.76,VP1_D1,,,,,"/>
+<approved hash="106,1,256.54,-236.22,VP1_D2,,,,,"/>
+<approved hash="106,1,256.54,-233.68,VP1_D3,,,,,"/>
+<approved hash="106,1,198.12,-238.76,VP1_LATCH,,,,,"/>
+<approved hash="115,1,178.477,-251.265,JP12,,,,,"/>
+<approved hash="115,1,194.903,-251.265,JP3,,,,,"/>
+<approved hash="115,1,85.6827,-263.965,JP4,,,,,"/>
+<approved hash="115,1,194.903,-266.505,JP5,,,,,"/>
+<approved hash="115,1,69.2573,-263.965,JP7,,,,,"/>
+<approved hash="115,1,178.477,-266.505,JP8,,,,,"/>
+<approved hash="115,1,85.6827,-236.415,JP11,,,,,"/>
+<approved hash="115,1,276.183,-251.265,JP13,,,,,"/>
+<approved hash="115,1,276.183,-266.505,JP6,,,,,"/>
+<approved hash="115,1,259.757,-251.265,JP14,,,,,"/>
+<approved hash="115,1,420.645,12.7,R1,,,,,"/>
+<approved hash="115,1,534.945,10.16,R2,,,,,"/>
+<approved hash="115,1,420.645,-58.42,R3,,,,,"/>
+<approved hash="115,1,534.945,-60.96,R4,,,,,"/>
+<approved hash="115,1,85.6827,-251.655,JP17,,,,,"/>
+<approved hash="115,1,85.6827,-218.245,JP1,,,,,"/>
+<approved hash="115,1,194.903,-220.785,JP9,,,,,"/>
+<approved hash="115,1,194.903,-236.025,JP15,,,,,"/>
+<approved hash="115,1,259.757,-236.025,JP16,,,,,"/>
+<approved hash="115,1,259.757,-266.505,JP19,,,,,"/>
+<approved hash="115,1,178.477,-220.785,JP10,,,,,"/>
+<approved hash="115,1,69.2573,-248.725,JP21,,,,,"/>
+<approved hash="115,1,69.2573,-218.245,JP22,,,,,"/>
+<approved hash="115,1,259.757,-220.785,JP23,,,,,"/>
+<approved hash="115,1,276.183,-236.025,JP24,,,,,"/>
+<approved hash="115,1,69.2573,-233.485,JP2,,,,,"/>
 </errors>
 </schematic>
 </drawing>

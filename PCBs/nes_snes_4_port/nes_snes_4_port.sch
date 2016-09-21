@@ -7683,8 +7683,6 @@ Source: AVX .. aphvc.pdf</description>
 <part name="GND18" library="supply1" deviceset="GND" device=""/>
 <part name="JP1" library="SparkFun-Connectors" deviceset="M04" device="PTH"/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
-<part name="JP13" library="SparkFun-Connectors" deviceset="M04" device="PTH"/>
-<part name="GND15" library="supply1" deviceset="GND" device=""/>
 <part name="JP14" library="SparkFun-Connectors" deviceset="M08" device="1X08"/>
 <part name="JP15" library="SparkFun-Connectors" deviceset="M04" device="PTH"/>
 <part name="JP20" library="SparkFun-Connectors" deviceset="M04" device="PTH"/>
@@ -7697,6 +7695,8 @@ Source: AVX .. aphvc.pdf</description>
 <part name="C3" library="rcl" deviceset="C-EU" device="C0603" value="0.1u"/>
 <part name="C4" library="rcl" deviceset="C-EU" device="C0603" value="0.1u"/>
 <part name="C5" library="rcl" deviceset="C-EU" device="C0603" value="0.1u"/>
+<part name="JP2" library="SparkFun-Connectors" deviceset="M04" device="PTH"/>
+<part name="GND15" library="supply1" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -7770,8 +7770,6 @@ Source: AVX .. aphvc.pdf</description>
 <instance part="GND18" gate="1" x="-152.4" y="35.56"/>
 <instance part="JP1" gate="G$1" x="322.58" y="-50.8"/>
 <instance part="GND1" gate="1" x="335.28" y="-58.42"/>
-<instance part="JP13" gate="G$1" x="322.58" y="-68.58"/>
-<instance part="GND15" gate="1" x="335.28" y="-76.2"/>
 <instance part="JP14" gate="G$1" x="414.02" y="-17.78"/>
 <instance part="JP15" gate="G$1" x="414.02" y="-40.64"/>
 <instance part="JP20" gate="G$1" x="414.02" y="-58.42"/>
@@ -7784,6 +7782,8 @@ Source: AVX .. aphvc.pdf</description>
 <instance part="C3" gate="G$1" x="-2.54" y="-30.48"/>
 <instance part="C4" gate="G$1" x="-15.24" y="-91.44"/>
 <instance part="C5" gate="G$1" x="-2.54" y="-91.44"/>
+<instance part="JP2" gate="G$1" x="322.58" y="-71.12"/>
+<instance part="GND15" gate="1" x="330.2" y="-78.74"/>
 </instances>
 <busses>
 </busses>
@@ -7980,16 +7980,28 @@ Source: AVX .. aphvc.pdf</description>
 <wire x1="335.28" y1="-53.34" x2="335.28" y2="-55.88" width="0.1524" layer="91"/>
 </segment>
 <segment>
-<pinref part="JP13" gate="G$1" pin="1"/>
-<pinref part="GND15" gate="1" pin="GND"/>
-<wire x1="327.66" y1="-71.12" x2="335.28" y2="-71.12" width="0.1524" layer="91"/>
-<wire x1="335.28" y1="-71.12" x2="335.28" y2="-73.66" width="0.1524" layer="91"/>
-</segment>
-<segment>
 <wire x1="419.1" y1="5.08" x2="434.34" y2="5.08" width="0.1524" layer="91"/>
 <wire x1="434.34" y1="5.08" x2="434.34" y2="2.54" width="0.1524" layer="91"/>
 <pinref part="GND17" gate="1" pin="GND"/>
 <pinref part="JP21" gate="G$1" pin="1"/>
+</segment>
+<segment>
+<pinref part="JP2" gate="G$1" pin="4"/>
+<pinref part="GND15" gate="1" pin="GND"/>
+<wire x1="327.66" y1="-66.04" x2="330.2" y2="-66.04" width="0.1524" layer="91"/>
+<wire x1="330.2" y1="-66.04" x2="330.2" y2="-68.58" width="0.1524" layer="91"/>
+<pinref part="JP2" gate="G$1" pin="3"/>
+<wire x1="330.2" y1="-68.58" x2="330.2" y2="-71.12" width="0.1524" layer="91"/>
+<wire x1="330.2" y1="-71.12" x2="330.2" y2="-73.66" width="0.1524" layer="91"/>
+<wire x1="330.2" y1="-73.66" x2="330.2" y2="-76.2" width="0.1524" layer="91"/>
+<wire x1="327.66" y1="-68.58" x2="330.2" y2="-68.58" width="0.1524" layer="91"/>
+<pinref part="JP2" gate="G$1" pin="2"/>
+<wire x1="327.66" y1="-71.12" x2="330.2" y2="-71.12" width="0.1524" layer="91"/>
+<pinref part="JP2" gate="G$1" pin="1"/>
+<wire x1="327.66" y1="-73.66" x2="330.2" y2="-73.66" width="0.1524" layer="91"/>
+<junction x="330.2" y="-68.58"/>
+<junction x="330.2" y="-71.12"/>
+<junction x="330.2" y="-73.66"/>
 </segment>
 </net>
 <net name="CP1_+5V" class="0">

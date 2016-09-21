@@ -9172,12 +9172,12 @@ Source: AVX .. aphvc.pdf</description>
 <approved hash="115,1,29.8027,-68.3853,JP11,,,,,"/>
 <approved hash="115,1,324.443,-30.2853,JP12,,,,,"/>
 <approved hash="115,1,324.443,-48.0653,JP1,,,,,"/>
-<approved hash="115,1,324.443,-65.8453,JP13,,,,,"/>
 <approved hash="115,1,415.883,-15.0453,JP14,,,,,"/>
 <approved hash="115,1,415.883,-37.9053,JP15,,,,,"/>
 <approved hash="115,1,415.883,-55.6853,JP20,,,,,"/>
 <approved hash="115,1,324.443,-0.194731,JP6,,,,,"/>
 <approved hash="115,1,415.883,-81.4747,JP9,,,,,"/>
+<approved hash="115,1,324.443,-68.3853,JP2,,,,,"/>
 </errors>
 </schematic>
 </drawing>

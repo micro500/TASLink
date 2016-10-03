@@ -5,9 +5,8 @@ import sys
 import cmd
 import threading
 import yaml
-import math
-
-# import time # used for sleeps in debugging
+#import math
+import time
 
 import rlcompleter, readline  # to add support for tab completion of commands
 import glob
@@ -35,7 +34,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -45,6 +44,7 @@ masksInUse = [0, 0, 0, 0]
 tasRuns = []
 inputBuffers = []
 customCommands = []
+isRunModified = [] # TODO: finish implementing this
 frameCounts = [0, 0, 0, 0]
 
 selected_run = -1
@@ -104,6 +104,7 @@ def load(filename):
     # tried switching these two to eliminate the elusive runtime error
     setupCommunication(run)
     tasRuns.append(run)
+    isRunModified.append(False)
 
     selected_run = len(tasRuns) - 1
 
@@ -361,20 +362,27 @@ def releaseConsolePort(port, type):
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
-    def __init__(self):
-        cmd.Cmd.__init__(self)
+
+    def setprompt(self):
         if selected_run == -1:
             self.prompt = "TASLink> "
         else:
-            self.prompt = "TASLink[" + str(selected_run + 1) + "]> "
+            if isRunModified[selected_run]:
+                self.prompt = "TASLink[#" + str(selected_run + 1) + "][" + str(
+                    tasRuns[selected_run].dummyFrames) + "f][UNSAVED]> "
+            else:
+                self.prompt = "TASLink[#" + str(selected_run + 1) + "][" + str(
+                    tasRuns[selected_run].dummyFrames) + "f]> "
+
+    def __init__(self):
+        cmd.Cmd.__init__(self)
+
+        self.setprompt()
 
         self.intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
     def postcmd(self, stop, line):
-        if selected_run == -1:
-            self.prompt = "TASLink> "
-        else:
-            self.prompt = "TASLink[" + str(selected_run + 1) + "]> "
+        self.setprompt()
 
         return stop
 
@@ -405,7 +413,19 @@ class CLI(cmd.Cmd):
         return False
 
     def do_exit(self, data):
-        """Not goodbyte but rather so long for a while"""
+        """Not 'goodbyte' but rather so long for a while"""
+        for index,modified in enumerate(isRunModified):
+            if modified:
+                while True:
+                    save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ") # JUSTINS
+                    if save == 'y':
+                        self.do_save(index+1)
+                        break
+                    elif save == 'n':
+                        break
+                    else:
+                        print("ERROR: Could not interpret response.")
+
         return True
 
     def do_save(self, data):
@@ -432,6 +452,8 @@ class CLI(cmd.Cmd):
 
         with open(filename, 'w') as f:
             f.write(yaml.dump(tasRuns[runID - 1]))
+
+        isRunModified[runID - 1] = False
 
         print("Save complete!")
 
@@ -490,6 +512,8 @@ class CLI(cmd.Cmd):
                 inputBuffers[index].insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
             inputBuffers[index] = inputBuffers[index][-difference:]
+
+        isRunModified[index] = True
 
         print("Run has been updated. Remember to save if you want this change to be permanent!")
 
@@ -595,6 +619,7 @@ class CLI(cmd.Cmd):
         del inputBuffers[index]
         del tasRuns[index]
         del customCommands[index]
+        del isRunModified[index]
 
         # reset frame counts, move them accordingly
         for i in range(index, len(frameCounts) - 1):  # one less than the hardcoded max of array
@@ -768,6 +793,7 @@ class CLI(cmd.Cmd):
 
         setupCommunication(tasrun)
         tasRuns.append(tasrun)
+        isRunModified.append(True)
 
         selected_run = len(tasRuns) - 1
 
@@ -829,7 +855,7 @@ if TASLINK_CONNECTED:
             pass
 
         if not t.isAlive():
-            ser.close()  # close serial communication cleanly
+            ser.close() # close serial communication cleanly
             break
 
         numBytes = ser.inWaiting()
@@ -841,5 +867,3 @@ if TASLINK_CONNECTED:
             latches = latchCounts[port]
             if latches > 0:
                 send_frames(run_index, latches)
-
-# work on 1 run at a time

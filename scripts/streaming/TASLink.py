@@ -5,12 +5,14 @@ import sys
 import cmd
 import threading
 import yaml
-#import math
-import time
+import gc
+# import math
+# import time
 
 import rlcompleter, readline  # to add support for tab completion of commands
 import glob
 
+gc.disable() # for performance reasons
 
 def complete(text, state):
     return (glob.glob(text + '*') + [None])[state]
@@ -34,7 +36,7 @@ baud = 2000000
 prebuffer = 60
 ser = None
 
-TASLINK_CONNECTED = 0  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
@@ -44,7 +46,7 @@ masksInUse = [0, 0, 0, 0]
 tasRuns = []
 inputBuffers = []
 customCommands = []
-isRunModified = [] # TODO: finish implementing this
+isRunModified = []
 frameCounts = [0, 0, 0, 0]
 
 selected_run = -1
@@ -128,6 +130,10 @@ def send_frames(index, amount):
 
     frameCounts[index] += amount
 
+class Transition(object):
+    frameno = None
+    window = None
+    dpcmFix = None
 
 class TASRun(object):
     def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix):
@@ -140,6 +146,7 @@ class TASRun(object):
         self.inputFile = file_name
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
+        self.transitions = []
 
         self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
 
@@ -149,6 +156,12 @@ class TASRun(object):
             self.maxControllers = 8
         else:
             self.maxControllers = 1  # random default, but truly we need to support other formats
+
+    def addTransition(self, t):
+        self.transitions.append(t)
+
+    def delTransition(self, index):
+        del self.transitions[index]
 
     def getInputBuffer(self, customCommand):
         with open(self.inputFile, 'rb') as myfile:
@@ -241,7 +254,7 @@ def setupCommunication(tasrun):
         command += str(port)  # should look like 'sp1' now
         portData = tasrun.controllerType
         if tasrun.dpcmFix:
-            portData = +128
+            portData += 128 # add the flag for the 8th bit
         if TASLINK_CONNECTED:
             ser.write(command + chr(portData))
         else:
@@ -417,7 +430,7 @@ class CLI(cmd.Cmd):
         for index,modified in enumerate(isRunModified):
             if modified:
                 while True:
-                    save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ") # JUSTINS
+                    save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ")
                     if save == 'y':
                         self.do_save(index+1)
                         break
@@ -686,6 +699,49 @@ class CLI(cmd.Cmd):
                     print("ERROR: Invalid run number!")
         selected_run = runID - 1
 
+    def do_add_transition(self, data):
+        """Adds a transition of communication settings at a particular frame"""
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        # transitions
+        while True:
+            try:
+                frameNum = readint("At what frame will this transition occur? ")
+                if frameNum <= 0:
+                    print("ERROR: Please enter a positive number!\n")
+                    continue
+                else:
+                    break
+            except ValueError:
+                print("ERROR: Please enter an integer!\n")
+        # DPCM fix
+        while True:
+            dpcm_fix = raw_input("Apply DPCM fix (y/n)? ")
+            if dpcm_fix.lower() == 'y':
+                dpcm_fix = True
+                break
+            elif dpcm_fix.lower() == 'n':
+                dpcm_fix = False
+                break
+            print("ERROR: Please enter y for yes or n for no!\n")
+        # window mode 0-15.75ms
+        while True:
+            window = readfloat(
+                "Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? ")
+            if window < 0 or window > 15.25:
+                print("ERROR: Window out of range [0, 15.75])!\n")
+            elif window % 0.25 != 0:
+                print("ERROR: Window is not a multiple of 0.25!\n")
+            else:
+                break
+        t = Transition()
+        t.dpcmFix = dpcm_fix
+        t.frameno = frameNum
+        t.window = window
+        tasRuns[selected_run].addTransition(t)
+        isRunModified[selected_run] = True
+
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
         global selected_run
@@ -808,6 +864,41 @@ class CLI(cmd.Cmd):
     def postloop(self):
         print
 
+def handleTransition(run, transition):
+    # TODO: fix so the current state is monitored rather than the original state
+    # TODO: redo all random lists as one big class, which monitor each run's state
+    if run.dpcmFix != transition.dpcmFix:
+        for port in run.portsList:
+            # enable the console ports
+            command = "sp"
+            command += str(port)  # should look like 'sp1' now
+            portData = run.controllerType
+            if transition.dpcmFix:
+                portData += 128  # add the flag for the 8th bit
+            ser.write(command + chr(portData))
+            print(command, portData)
+    if run.window != transition.window:
+        controllers = list('00000000')
+        for port in run.portsList:
+            if run.controllerType == CONTROLLER_NORMAL:
+                limit = 1
+            elif run.controllerType == CONTROLLER_MULTITAP:
+                limit = 4
+            else:
+                limit = 2
+            for counter in range(limit):
+                controllers[8 - lanes[port][counter]] = '1'  # this is used later for the custom stream command
+        controllerMask = "".join(controllers)  # convert binary to string
+
+        # setup events #s e lane_num byte controllerMask
+        command = 'se' + str(min(run.portsList))
+        # do first byte
+        byte = list('{0:08b}'.format(
+            int(transition.window / 0.25)))  # create padded bytestring, convert to list for manipulation
+        byte[0] = '1'  # enable flag
+        bytestring = "".join(byte)  # turn back into string
+        ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))
+
 # ----- MAIN EXECUTION BEGINS HERE -----
 
 if len(sys.argv) < 2:
@@ -862,8 +953,16 @@ if TASLINK_CONNECTED:
         c = ser.read(numBytes)
         latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
 
+        if numBytes > 60:
+            print ("WARNING: High frame read detected: " + str(numBytes))
+
         for run_index, run in enumerate(tasRuns):
             port = min(run.portsList) # the same port we have an event listener on
             latches = latchCounts[port]
+
+            for transition in run.transitions:
+                if 0 <= (transition.frameno+run.dummyFrames+prebuffer) - frameCounts[run_index] < latches: # we're about to pass the transition frame
+                    handleTransition(run,transition)
+
             if latches > 0:
                 send_frames(run_index, latches)

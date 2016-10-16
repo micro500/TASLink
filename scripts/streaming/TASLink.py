@@ -1,3 +1,5 @@
+# TODO: redo all random lists as one big class, which monitor each run's state
+
 import os
 import serial
 from serial import SerialException
@@ -47,6 +49,8 @@ tasRuns = []
 inputBuffers = []
 customCommands = []
 isRunModified = []
+dpcmState = []
+windowState = []
 frameCounts = [0, 0, 0, 0]
 
 selected_run = -1
@@ -107,6 +111,8 @@ def load(filename):
     setupCommunication(run)
     tasRuns.append(run)
     isRunModified.append(False)
+    dpcmState.append(run.dpcmFix)
+    windowState.append(run.window)
 
     selected_run = len(tasRuns) - 1
 
@@ -547,6 +553,11 @@ class CLI(cmd.Cmd):
             frameCounts = [0, 0, 0, 0]
             for index in range(len(tasRuns)):
                 send_frames(index, prebuffer)  # re-pre-buffer-!
+                # return runs to their original state
+                t = Transition()
+                t.dpcmFix = tasRuns[index].dpcmFix
+                t.window = tasRuns[index].window
+                handleTransition(index,t)
             print("Reset command given to all runs!")
             return False
         elif data != "":
@@ -587,6 +598,11 @@ class CLI(cmd.Cmd):
 
         frameCounts[index] = 0
         send_frames(index, prebuffer)  # re-pre-buffer-!
+        # return run to its original state
+        t = Transition()
+        t.dpcmFix = tasRuns[index].dpcmFix
+        t.window = tasRuns[index].window
+        handleTransition(index, t)
         print("Reset complete!")
 
     def do_remove(self, data):
@@ -633,6 +649,8 @@ class CLI(cmd.Cmd):
         del tasRuns[index]
         del customCommands[index]
         del isRunModified[index]
+        del dpcmState[index]
+        del windowState[index]
 
         # reset frame counts, move them accordingly
         for i in range(index, len(frameCounts) - 1):  # one less than the hardcoded max of array
@@ -850,6 +868,8 @@ class CLI(cmd.Cmd):
         setupCommunication(tasrun)
         tasRuns.append(tasrun)
         isRunModified.append(True)
+        dpcmState.append(dpcm_fix)
+        windowState.append(window)
 
         selected_run = len(tasRuns) - 1
 
@@ -864,25 +884,23 @@ class CLI(cmd.Cmd):
     def postloop(self):
         print
 
-def handleTransition(run, transition):
-    # TODO: fix so the current state is monitored rather than the original state
-    # TODO: redo all random lists as one big class, which monitor each run's state
-    if run.dpcmFix != transition.dpcmFix:
-        for port in run.portsList:
+def handleTransition(run_index, transition):
+    if dpcmState[run_index] != transition.dpcmFix:
+        for port in tasRuns[run_index].portsList:
             # enable the console ports
             command = "sp"
             command += str(port)  # should look like 'sp1' now
-            portData = run.controllerType
+            portData = tasRuns[run_index].controllerType
             if transition.dpcmFix:
                 portData += 128  # add the flag for the 8th bit
             ser.write(command + chr(portData))
-            print(command, portData)
-    if run.window != transition.window:
+            dpcmState[run_index] = transition.dpcmFix
+    if windowState[run_index] != transition.window:
         controllers = list('00000000')
-        for port in run.portsList:
-            if run.controllerType == CONTROLLER_NORMAL:
+        for port in tasRuns[run_index].portsList:
+            if tasRuns[run_index].controllerType == CONTROLLER_NORMAL:
                 limit = 1
-            elif run.controllerType == CONTROLLER_MULTITAP:
+            elif tasRuns[run_index].controllerType == CONTROLLER_MULTITAP:
                 limit = 4
             else:
                 limit = 2
@@ -891,13 +909,14 @@ def handleTransition(run, transition):
         controllerMask = "".join(controllers)  # convert binary to string
 
         # setup events #s e lane_num byte controllerMask
-        command = 'se' + str(min(run.portsList))
+        command = 'se' + str(min(tasRuns[run_index].portsList))
         # do first byte
         byte = list('{0:08b}'.format(
             int(transition.window / 0.25)))  # create padded bytestring, convert to list for manipulation
         byte[0] = '1'  # enable flag
         bytestring = "".join(byte)  # turn back into string
         ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))
+        windowState[run_index] = transition.window
 
 # ----- MAIN EXECUTION BEGINS HERE -----
 
@@ -962,7 +981,7 @@ if TASLINK_CONNECTED:
 
             for transition in run.transitions:
                 if 0 <= (transition.frameno+run.dummyFrames+prebuffer) - frameCounts[run_index] < latches: # we're about to pass the transition frame
-                    handleTransition(run,transition)
+                    handleTransition(run_index,transition)
 
             if latches > 0:
                 send_frames(run_index, latches)

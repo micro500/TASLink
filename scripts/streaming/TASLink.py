@@ -1,5 +1,3 @@
-# TODO: redo all random lists as one big class, which monitor each run's state
-
 import os
 import serial
 from serial import SerialException
@@ -19,44 +17,40 @@ gc.disable() # for performance reasons
 def complete(text, state):
     return (glob.glob(text + '*') + [None])[state]
 
-
 def complete_nostate(text, *ignored):
     return glob.glob(text + '*') + [None]
-
 
 readline.set_completer_delims(' \t\n')
 readline.parse_and_bind("tab: complete")
 readline.set_completer(complete)
 
+# important constants
+lanes = [[-1], [1, 2, 5, 6], [3, 4, 7, 8], [5, 6], [7, 8]]
+MASKS = 'ABCD'
 CONTROLLER_NORMAL = 0  # 1 controller
 CONTROLLER_Y = 1  #: y-cable [like half a multitap]
 CONTROLLER_MULTITAP = 2  #: multitap (Ports 1 and 2 only) [snes only]
 CONTROLLER_FOUR_SCORE = 3  #: four-score [nes-only peripheral that we don't do anything with]
-
 baud = 2000000
-
 prebuffer = 60
 ser = None
-
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
+# important global variables to keep track of
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
-lanes = [[-1], [1, 2, 5, 6], [3, 4, 7, 8], [5, 6], [7, 8]]
-MASKS = 'ABCD'
 masksInUse = [0, 0, 0, 0]
-tasRuns = []
-inputBuffers = []
-customCommands = []
-isRunModified = []
-dpcmState = []
-windowState = []
-frameCounts = [0, 0, 0, 0]
-
+runStatuses = [] # list of currently active runs and their statuses
 selected_run = -1
 
-# For all x in [0,4), tasRuns[x] should always correspond to have customCommands[x].
-# Each tasRuns[x] listens for latch on the min of of its ports. Each run has progressed up to frame frameCounts[x].
+class RunStatus(object):
+    tasRun = None
+    inputBuffer = None
+    customCommand = None
+    isRunModified = None
+    dpcmState = None
+    windowState = None
+    frameCount = 0
 
 def readint(question):
     num = -1
@@ -107,34 +101,30 @@ def load(filename):
         print("ERROR: Requested ports already in use!")
         return False
 
-    # tried switching these two to eliminate the elusive runtime error
-    setupCommunication(run)
-    tasRuns.append(run)
-    isRunModified.append(False)
-    dpcmState.append(run.dpcmFix)
-    windowState.append(run.window)
+    rs = RunStatus()
+    rs.customCommand = setupCommunication(run)
+    rs.inputBuffer = run.getInputBuffer(rs.customCommand)
+    rs.tasRun = run
+    rs.isRunModified = False
+    rs.dpcmState = run.dpcmFix
+    rs.windowState = run.window
+    runStatuses.append(rs)
 
-    selected_run = len(tasRuns) - 1
+    selected_run = len(runStatuses) - 1
 
     send_frames(selected_run, prebuffer)
 
     print("Run has been successfully loaded!")
 
 def send_frames(index, amount):
-    framecount = frameCounts[index]
+    framecount = runStatuses[index].frameCount
 
     if TASLINK_CONNECTED == 1:
-        try:
-            ser.write(''.join(inputBuffers[index][framecount:(framecount + amount)]))
-        except IndexError:
-            print("Index error in send_frames. This shouldn't happen.\nDEBUG INFORMATION:")
-            print("Index: "+str(index))
-            print("Amount: "+str(amount))
-            print("len(inputBuffers): "+str(len(inputBuffers)))
+        ser.write(''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)]))
     else:
-        print("DATA SENT: ", ''.join(inputBuffers[index][framecount:(framecount + amount)]))
+        print("DATA SENT: ", ''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)]))
 
-    frameCounts[index] += amount
+    runStatuses[index].frameCount += amount
 
 class Transition(object):
     frameno = None
@@ -299,7 +289,6 @@ def setupCommunication(tasrun):
     # setup custom stream command
     command = 's'
     customCommand = getNextMask()
-    customCommands.append(customCommand)
     if customCommand == 'Z':
         print("ERROR: all four custom streams are full!")
         # TODO: handle gracefully
@@ -328,7 +317,7 @@ def setupCommunication(tasrun):
     else:
         print("r", controllerMask)
 
-    inputBuffers.append(tasrun.getInputBuffer(customCommand))  # add the input buffer to a global list of input buffers
+    return customCommand
 
 
 def isConsolePortAvailable(port, type):
@@ -386,12 +375,12 @@ class CLI(cmd.Cmd):
         if selected_run == -1:
             self.prompt = "TASLink> "
         else:
-            if isRunModified[selected_run]:
+            if runStatuses[selected_run].isRunModified:
                 self.prompt = "TASLink[#" + str(selected_run + 1) + "][" + str(
-                    tasRuns[selected_run].dummyFrames) + "f][UNSAVED]> "
+                    runStatuses[selected_run].tasRun.dummyFrames) + "f][UNSAVED]> "
             else:
                 self.prompt = "TASLink[#" + str(selected_run + 1) + "][" + str(
-                    tasRuns[selected_run].dummyFrames) + "f]> "
+                    runStatuses[selected_run].tasRun.dummyFrames) + "f]> "
 
     def __init__(self):
         cmd.Cmd.__init__(self)
@@ -433,7 +422,8 @@ class CLI(cmd.Cmd):
 
     def do_exit(self, data):
         """Not 'goodbyte' but rather so long for a while"""
-        for index,modified in enumerate(isRunModified):
+        for index,runstatus in enumerate(runStatuses):
+            modified = runstatus.isRunModified
             if modified:
                 while True:
                     save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ")
@@ -450,7 +440,7 @@ class CLI(cmd.Cmd):
     def do_save(self, data):
         """Save a run to a file"""
         # print options
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
         if data != "":
@@ -459,7 +449,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 return False
-            if 0 < runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(runStatuses):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -470,9 +460,9 @@ class CLI(cmd.Cmd):
         filename = raw_input("Please enter filename: ")
 
         with open(filename, 'w') as f:
-            f.write(yaml.dump(tasRuns[runID - 1]))
+            f.write(yaml.dump(runStatuses[runID - 1].tasRun))
 
-        isRunModified[runID - 1] = False
+        runStatuses[runID - 1].isRunModified = False
 
         print("Save complete!")
 
@@ -493,7 +483,7 @@ class CLI(cmd.Cmd):
     def do_modify_frames(self, data):
         """Modify the initial blank input frames"""
         # print options
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
         if data != "":
@@ -502,7 +492,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 pass
-            if 0 < runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(runStatuses):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -510,14 +500,14 @@ class CLI(cmd.Cmd):
         else:
             runID = selected_run + 1
         index = runID - 1
-        run = tasRuns[index]
+        run = runStatuses[index].tasRun
         print("The current number of initial blank frames is : " + str(run.dummyFrames))
         frames = readint("How many initial blank frames do you want? ")
         difference = frames - run.dummyFrames  # positive means we're adding frames, negative means we're removing frames
         run.dummyFrames = frames
         # modify input buffer accordingly
         if difference > 0:
-            working_string = customCommands[index]
+            working_string = runStatuses[index].customCommand
             max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
             # next we take controller type into account
             if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
@@ -528,20 +518,18 @@ class CLI(cmd.Cmd):
                 working_string += chr(0xFF)
 
             for count in range(difference):
-                inputBuffers[index].insert(0, working_string)  # add the correct number of blank input frames
+                runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
-            inputBuffers[index] = inputBuffers[index][-difference:]
+            runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
 
-        isRunModified[index] = True
+        runStatuses[index].isRunModified = True
 
         print("Run has been updated. Remember to save if you want this change to be permanent!")
 
     def do_reset(self, data):
         """Reset an active run back to frame 0"""
-        global frameCounts
-
         # print options
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
 
@@ -550,13 +538,13 @@ class CLI(cmd.Cmd):
                 ser.write("R")
             else:
                 print("R")
-            frameCounts = [0, 0, 0, 0]
-            for index in range(len(tasRuns)):
+            for index in range(len(runStatuses)):
+                runStatuses[index].frameCount = 0
                 send_frames(index, prebuffer)  # re-pre-buffer-!
                 # return runs to their original state
                 t = Transition()
-                t.dpcmFix = tasRuns[index].dpcmFix
-                t.window = tasRuns[index].window
+                t.dpcmFix = runStatuses[index].tasRun.dpcmFix
+                t.window = runStatuses[index].tasRun.window
                 handleTransition(index,t)
             print("Reset command given to all runs!")
             return False
@@ -567,7 +555,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter 'all' or an integer!\n")
                 return False
-            if 0 < runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(runStatuses):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -577,7 +565,7 @@ class CLI(cmd.Cmd):
         index = runID - 1
         # get the lane mask
         controllers = list('00000000')
-        tasrun = tasRuns[index]
+        tasrun = runStatuses[index].tasRun
         if tasrun.controllerType == CONTROLLER_NORMAL:
             limit = 1
         elif tasrun.controllerType == CONTROLLER_MULTITAP:
@@ -596,12 +584,12 @@ class CLI(cmd.Cmd):
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
-        frameCounts[index] = 0
+        runStatuses[index].frameCount = 0
         send_frames(index, prebuffer)  # re-pre-buffer-!
         # return run to its original state
         t = Transition()
-        t.dpcmFix = tasRuns[index].dpcmFix
-        t.window = tasRuns[index].window
+        t.dpcmFix = runStatuses[index].tasRun.dpcmFix
+        t.window = runStatuses[index].tasRun.window
         handleTransition(index, t)
         print("Reset complete!")
 
@@ -609,7 +597,7 @@ class CLI(cmd.Cmd):
         """Remove one of the current runs."""
         global selected_run
         # print options
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
         if data != "":
@@ -618,7 +606,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Invalid run number!")
                 return False
-            if 0 < runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(runStatuses):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -628,7 +616,7 @@ class CLI(cmd.Cmd):
         index = runID - 1
         # make the mask
         controllers = list('00000000')
-        tasrun = tasRuns[index]
+        tasrun = runStatuses[index].tasRun
         if tasrun.controllerType == CONTROLLER_NORMAL:
             limit = 1
         elif tasrun.controllerType == CONTROLLER_MULTITAP:
@@ -640,22 +628,12 @@ class CLI(cmd.Cmd):
                 controllers[8 - lanes[port][counter]] = '1'
         controllerMask = "".join(controllers)  # convert binary to string
         # free ports
-        for port in tasRuns[index].portsList:
-            releaseConsolePort(port, tasRuns[index].controllerType)
+        for port in runStatuses[index].tasRun.portsList:
+            releaseConsolePort(port, runStatuses[index].tasRun.controllerType)
         # free custom stream and event
-        freeMask(customCommands[index])
+        freeMask(runStatuses[index].customCommand)
         # remove input and run from lists
-        del inputBuffers[index]
-        del tasRuns[index]
-        del customCommands[index]
-        del isRunModified[index]
-        del dpcmState[index]
-        del windowState[index]
-
-        # reset frame counts, move them accordingly
-        for i in range(index, len(frameCounts) - 1):  # one less than the hardcoded max of array
-            frameCounts[i] = frameCounts[i + 1]
-        frameCounts[-1] = 0  # max should be 0 no matter what, since we've just removed one and compressed the list
+        del runStatuses[index]
 
        # clear the lanes
         if TASLINK_CONNECTED:
@@ -663,7 +641,7 @@ class CLI(cmd.Cmd):
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
-        selected_run = len(tasRuns) - 1 # even if there was only 1 run, it will go to -1, signaling we have no more runs
+        selected_run = len(runStatuses) - 1 # even if there was only 1 run, it will go to -1, signaling we have no more runs
 
         print("Run has been successfully removed!")
 
@@ -680,19 +658,19 @@ class CLI(cmd.Cmd):
 
     def do_list(self, data):
         """List all active runs"""
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
-        for index, run in enumerate(tasRuns):
+        for index, runstatus in enumerate(runStatuses):
             print("Run #" + str(index + 1) + ": ")
-            print yaml.dump(run)
+            print yaml.dump(runstatus.tasRun)
         pass
 
     def do_select(self, data):
         """Select a run to modify with other commands"""
         global selected_run
 
-        if not tasRuns:
+        if not runStatuses:
             print("No currently active runs.")
             return False
 
@@ -703,7 +681,7 @@ class CLI(cmd.Cmd):
             except ValueError:
                 print("ERROR: Please enter an integer!\n")
                 return False
-            if 0 < runID <= len(tasRuns):  # confirm valid run number
+            if 0 < runID <= len(runStatuses):  # confirm valid run number
                 pass
             else:
                 print("ERROR: Invalid run number!")
@@ -711,7 +689,7 @@ class CLI(cmd.Cmd):
         else:
             while True:
                 runID = readint("Which run # do you want to select? ")
-                if 0 < runID <= len(tasRuns):  # confirm valid run number
+                if 0 < runID <= len(runStatuses):  # confirm valid run number
                     break
                 else:
                     print("ERROR: Invalid run number!")
@@ -757,8 +735,8 @@ class CLI(cmd.Cmd):
         t.dpcmFix = dpcm_fix
         t.frameno = frameNum
         t.window = window
-        tasRuns[selected_run].addTransition(t)
-        isRunModified[selected_run] = True
+        runStatuses[selected_run].tasRun.addTransition(t)
+        runStatuses[selected_run].isRunModified = True
 
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
@@ -865,13 +843,16 @@ class CLI(cmd.Cmd):
         # create TASRun object and assign it to our global, defined above
         tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
 
-        setupCommunication(tasrun)
-        tasRuns.append(tasrun)
-        isRunModified.append(True)
-        dpcmState.append(dpcm_fix)
-        windowState.append(window)
+        rs = RunStatus()
+        rs.customCommand = setupCommunication(tasrun)
+        rs.inputBuffer = tasrun.getInputBuffer(rs.customCommand)
+        rs.tasRun = tasrun
+        rs.isRunModified = True
+        rs.dpcmState = dpcm_fix
+        rs.windowState = run.window
+        runStatuses.append(rs)
 
-        selected_run = len(tasRuns) - 1
+        selected_run = len(runStatuses) - 1
 
         send_frames(selected_run, prebuffer)
 
@@ -885,22 +866,22 @@ class CLI(cmd.Cmd):
         print
 
 def handleTransition(run_index, transition):
-    if dpcmState[run_index] != transition.dpcmFix:
-        for port in tasRuns[run_index].portsList:
+    if runStatuses[run_index].dpcmState != transition.dpcmFix:
+        for port in runStatuses[run_index].tasRun.portsList:
             # enable the console ports
             command = "sp"
             command += str(port)  # should look like 'sp1' now
-            portData = tasRuns[run_index].controllerType
+            portData = runStatuses[run_index].tasRun.controllerType
             if transition.dpcmFix:
                 portData += 128  # add the flag for the 8th bit
             ser.write(command + chr(portData))
-            dpcmState[run_index] = transition.dpcmFix
-    if windowState[run_index] != transition.window:
+            runStatuses[run_index].dpcmState = transition.dpcmFix
+    if runStatuses[run_index].windowState != transition.window:
         controllers = list('00000000')
-        for port in tasRuns[run_index].portsList:
-            if tasRuns[run_index].controllerType == CONTROLLER_NORMAL:
+        for port in runStatuses[run_index].tasRun.portsList:
+            if runStatuses[run_index].tasRun.controllerType == CONTROLLER_NORMAL:
                 limit = 1
-            elif tasRuns[run_index].controllerType == CONTROLLER_MULTITAP:
+            elif runStatuses[run_index].tasRun.controllerType == CONTROLLER_MULTITAP:
                 limit = 4
             else:
                 limit = 2
@@ -909,14 +890,14 @@ def handleTransition(run_index, transition):
         controllerMask = "".join(controllers)  # convert binary to string
 
         # setup events #s e lane_num byte controllerMask
-        command = 'se' + str(min(tasRuns[run_index].portsList))
+        command = 'se' + str(min(runStatuses[run_index].tasRun.portsList))
         # do first byte
         byte = list('{0:08b}'.format(
             int(transition.window / 0.25)))  # create padded bytestring, convert to list for manipulation
         byte[0] = '1'  # enable flag
         bytestring = "".join(byte)  # turn back into string
         ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))
-        windowState[run_index] = transition.window
+        runStatuses[run_index].windowState = transition.window
 
 # ----- MAIN EXECUTION BEGINS HERE -----
 
@@ -950,7 +931,7 @@ t.start()
 
 # main thread of execution = serial communication thread
 # keep loop as tight as possible to eliminate communication overhead
-while t.isAlive() and not inputBuffers:  # wait until we have at least one run ready to go
+while t.isAlive() and not runStatuses:  # wait until we have at least one run ready to go
     pass
 
 if TASLINK_CONNECTED and not t.isAlive():
@@ -975,12 +956,13 @@ if TASLINK_CONNECTED:
         if numBytes > 60:
             print ("WARNING: High frame read detected: " + str(numBytes))
 
-        for run_index, run in enumerate(tasRuns):
+        for run_index, runstatus in enumerate(runStatuses):
+            run = runstatus.tasRun
             port = min(run.portsList) # the same port we have an event listener on
             latches = latchCounts[port]
 
             for transition in run.transitions:
-                if 0 <= (transition.frameno+run.dummyFrames+prebuffer) - frameCounts[run_index] < latches: # we're about to pass the transition frame
+                if 0 <= (transition.frameno+run.dummyFrames+prebuffer) - runstatus.frameCount < latches: # we're about to pass the transition frame
                     handleTransition(run_index,transition)
 
             if latches > 0:

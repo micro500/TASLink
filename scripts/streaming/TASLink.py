@@ -6,8 +6,8 @@ import cmd
 import threading
 import yaml
 import gc
+import time
 # import math
-# import time
 
 import rlcompleter, readline  # to add support for tab completion of commands
 import glob
@@ -908,7 +908,7 @@ if len(sys.argv) < 2:
 
 if TASLINK_CONNECTED:
     try:
-        ser = serial.Serial(sys.argv[1], baud)
+        ser = serial.Serial(sys.argv[1], baud, timeout=1)
     except SerialException:
         print ("ERROR: the specified interface (" + sys.argv[1] + ") is in use")
         sys.exit(0)
@@ -932,6 +932,7 @@ t.start()
 # main thread of execution = serial communication thread
 # keep loop as tight as possible to eliminate communication overhead
 while t.isAlive() and not runStatuses:  # wait until we have at least one run ready to go
+    time.sleep(0.1)
     pass
 
 if TASLINK_CONNECTED and not t.isAlive():
@@ -941,20 +942,19 @@ if TASLINK_CONNECTED and not t.isAlive():
 # t3h urn
 if TASLINK_CONNECTED:
     while t.isAlive():
-
-        while ser.inWaiting() == 0 and t.isAlive():
-            pass
-
         if not t.isAlive():
             ser.close() # close serial communication cleanly
             break
 
-        numBytes = ser.inWaiting()
-        c = ser.read(numBytes)
+        c = ser.read(1)
+        if c == '': # nothing was waiting
+            continue # so try again
+        numBytes = ser.inWaiting() # is anything else waiting
+        if numBytes > 0:
+            c += ser.read(numBytes)
+            if numBytes > 60:
+                print ("WARNING: High frame read detected: " + str(numBytes))
         latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
-
-        if numBytes > 60:
-            print ("WARNING: High frame read detected: " + str(numBytes))
 
         for run_index, runstatus in enumerate(runStatuses):
             run = runstatus.tasRun

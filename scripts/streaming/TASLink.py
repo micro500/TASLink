@@ -34,6 +34,8 @@ CONTROLLER_FOUR_SCORE = 3  #: four-score [nes-only peripheral that we don't do a
 baud = 2000000
 prebuffer = 60
 ser = None
+supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
+
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 # important global variables to keep track of
@@ -148,7 +150,7 @@ class TASRun(object):
 
         if self.fileExtension == 'r08':
             self.maxControllers = 2
-        elif self.fileExtension == 'r16' or self.fileExtension == 'r16m':
+        elif self.fileExtension == 'r16m':
             self.maxControllers = 8
         else:
             self.maxControllers = 1  # random default, but truly we need to support other formats
@@ -209,7 +211,7 @@ class TASRun(object):
                         command_string += working_string[counter+1:counter+2]  # math not-so-magic
                 buffer[frameno+self.dummyFrames] = command_string
                 frameno += 1
-        elif self.fileExtension == 'r16' or self.fileExtension == 'r16m':
+        elif self.fileExtension == 'r16m':
             while True:
                 working_string = customCommand
 
@@ -849,7 +851,7 @@ class CLI(cmd.Cmd):
         rs.tasRun = tasrun
         rs.isRunModified = True
         rs.dpcmState = dpcm_fix
-        rs.windowState = run.window
+        rs.windowState = window
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1

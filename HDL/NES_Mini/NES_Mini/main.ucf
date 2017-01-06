@@ -5,28 +5,42 @@ CONFIG PROHIBIT=P60;
 
 NET CLK                       LOC="P94"  | IOSTANDARD=LVTTL | PERIOD=31.25ns;               # CLK
 NET RX                        LOC="P101" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST;          # RX
-NET TX_real                        LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
+NET TX_real                   LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
+
+NET console_d0_oe(2)          LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
+NET console_d0_out(2)         LOC="P66"  | IOSTANDARD=LVTTL;                                # A5
+NET console_d1_oe(2)          LOC="P67"  | IOSTANDARD=LVTTL;                                # A6
+NET console_d1_out(2)         LOC="P75"  | IOSTANDARD=LVTTL;                                # A7
+NET console_clock_oe(2)       LOC="P79"  | IOSTANDARD=LVTTL;                                # A8
+NET console_clock_out(2)      LOC="P81"  | IOSTANDARD=LVTTL;                                # A9
+NET console_d0_in(2)          LOC="P83"  | IOSTANDARD=LVTTL;                                # A10
+NET console_clock_in(2)       LOC="P85"  | IOSTANDARD=LVTTL;                                # A11
+NET debug(4)                  LOC="P88"  | IOSTANDARD=LVTTL;                                # A12
+NET debug(5)                  LOC="P93"  | IOSTANDARD=LVTTL;                                # A13
+NET debug(6)                  LOC="P98"  | IOSTANDARD=LVTTL;                                # A14
+NET debug(7)                  LOC="P100" | IOSTANDARD=LVTTL;                                # A15
 
 
-NET debug(0)                  LOC="P79"  | IOSTANDARD=LVTTL;                                # A8
-NET debug(1)                  LOC="P81"  | IOSTANDARD=LVTTL;                                # A9
-NET debug(2)                  LOC="P83"  | IOSTANDARD=LVTTL;                                # A10
-NET debug(3)                  LOC="P85"  | IOSTANDARD=LVTTL;                                # A11
-
-NET debug2                    LOC="P88"  | IOSTANDARD=LVTTL;                                # A12
+NET visualization_clock(2)    LOC="P99"  | IOSTANDARD=LVTTL;                                # B0
+NET visualization_latch(2)    LOC="P97"  | IOSTANDARD=LVTTL;                                # B1
+NET visualization_d1(2)       LOC="P92"  | IOSTANDARD=LVTTL;                                # B2
+NET visualization_d0(2)       LOC="P87"  | IOSTANDARD=LVTTL;                                # B3
 
 
-
-
-NET SDATA_out                 LOC="P114" | IOSTANDARD=LVTTL;                                # C0
-NET SCLK_out                  LOC="P115" | IOSTANDARD=LVTTL;                                # C1
-
-NET vsync_in                  LOC="P116" | IOSTANDARD=LVTTL;                                # C2
-
-
-NET SCLK_in                   LOC="P124" | IOSTANDARD=LVTTL;                                # C9
-NET SCLK_OE                   LOC="P126" | IOSTANDARD=LVTTL;                                # C10
-
-NET SDATA_in                  LOC="P133" | IOSTANDARD=LVTTL;                                # C14
-NET SDATA_OE                  LOC="P134" | IOSTANDARD=LVTTL;                                # C15
+NET visualization_d0(1)       LOC="P114" | IOSTANDARD=LVTTL;                                # C0
+NET visualization_d1(1)       LOC="P115" | IOSTANDARD=LVTTL;                                # C1
+NET visualization_latch(1)    LOC="P116" | IOSTANDARD=LVTTL;                                # C2
+NET visualization_clock(1)    LOC="P117" | IOSTANDARD=LVTTL;                                # C3
+NET console_d0_in(1)          LOC="P118" | IOSTANDARD=LVTTL;                                # C4
+NET console_clock_in(1)       LOC="P119" | IOSTANDARD=LVTTL;                                # C5
+NET console_d0_oe(1)          LOC="P120" | IOSTANDARD=LVTTL;                                # C6
+NET console_d0_out(1)         LOC="P121" | IOSTANDARD=LVTTL;                                # C7
+NET console_d1_oe(1)          LOC="P123" | IOSTANDARD=LVTTL;                                # C8
+NET console_d1_out(1)         LOC="P124" | IOSTANDARD=LVTTL;                                # C9
+NET console_clock_oe(1)       LOC="P126" | IOSTANDARD=LVTTL;                                # C10
+NET console_clock_out(1)      LOC="P127" | IOSTANDARD=LVTTL;                                # C11
+NET debug(3)                  LOC="P131" | IOSTANDARD=LVTTL;                                # C12
+NET debug(2)                  LOC="P132" | IOSTANDARD=LVTTL;                                # C13
+NET debug(1)                  LOC="P133" | IOSTANDARD=LVTTL;                                # C14
+NET debug(0)                  LOC="P134" | IOSTANDARD=LVTTL;                                # C15
 

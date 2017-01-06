@@ -8,15 +8,21 @@ entity main is
     Port ( clk : in  STD_LOGIC;
            RX : in  STD_LOGIC;
            TX_real : out  STD_LOGIC;
-           SCLK_out : out  STD_LOGIC;
-           SCLK_in : in  STD_LOGIC;
-           SCLK_OE : out  STD_LOGIC;
-           SDATA_out : out  STD_LOGIC;
-           SDATA_OE : out  STD_LOGIC;
-           SDATA_in : in  STD_LOGIC;
-           vsync_in : in  STD_LOGIC;
-           debug2 : out STD_LOGIC;
-           debug : out  STD_LOGIC_VECTOR (3 downto 0));
+           
+           console_d0_oe : out STD_LOGIC_VECTOR(1 to 2);
+           console_d0_out : out STD_LOGIC_VECTOR(1 to 2);
+           console_d1_oe : out STD_LOGIC_VECTOR(1 to 2);
+           console_d1_out : out STD_LOGIC_VECTOR(1 to 2);
+           console_clock_oe : out STD_LOGIC_VECTOR(1 to 2);
+           console_clock_out : out STD_LOGIC_VECTOR(1 to 2);
+           console_d0_in : in STD_LOGIC_VECTOR(1 to 2);
+           console_clock_in : in STD_LOGIC_VECTOR(1 to 2);
+           debug : inout STD_LOGIC_VECTOR(7 downto 0);
+
+           visualization_clock : out STD_LOGIC_VECTOR(1 to 2);
+           visualization_latch : out STD_LOGIC_VECTOR(1 to 2);
+           visualization_d1 : out STD_LOGIC_VECTOR(1 to 2);
+           visualization_d0 : out STD_LOGIC_VECTOR(1 to 2));
 end main;
 
 architecture Behavioral of main is
@@ -41,9 +47,9 @@ architecture Behavioral of main is
   end component;
   
   component fifo is
-    Port ( data_in : in  STD_LOGIC_VECTOR (7 downto 0);
+    Port ( data_in : in  STD_LOGIC_VECTOR (15 downto 0);
            write_en : in  STD_LOGIC;
-           data_out : out  STD_LOGIC_VECTOR (7 downto 0);
+           data_out : out  STD_LOGIC_VECTOR (15 downto 0);
            read_en : in  STD_LOGIC;
            clk : in  STD_LOGIC;
            empty : out  STD_LOGIC;
@@ -51,6 +57,10 @@ architecture Behavioral of main is
            clear : in  STD_LOGIC);
   end component;
 
+  signal console_d0_in_f : std_logic_vector(1 to 2);
+  signal console_clock_in_f : std_logic_vector(1 to 2);
+  
+  signal vsync_in_f : std_logic;
 
 
 
@@ -76,16 +86,13 @@ architecture Behavioral of main is
   signal toggle_signal : std_logic := '0';
   signal toggle_signal2 : std_logic := '0';
   
-  signal SCLK_in_f : std_logic;
-  signal SDATA_in_f : std_logic;
-  signal vsync_in_f : std_logic;
- 
-  signal data0 : std_logic_vector(7 downto 0) := x"80";
-  signal data1 : std_logic_vector(7 downto 0) := x"80";
-  signal data2 : std_logic_vector(7 downto 0) := x"80";
-  signal data3 : std_logic_vector(7 downto 0) := x"80";
-  signal data6 : std_logic_vector(7 downto 0) := x"FF";
-  signal data7 : std_logic_vector(7 downto 0) := x"FF";
+  type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
+  signal data0 : vector8(1 to 2) := (others => x"80");
+  signal data1 : vector8(1 to 2) := (others => x"80");
+  signal data2 : vector8(1 to 2) := (others => x"80");
+  signal data3 : vector8(1 to 2) := (others => x"80");
+  signal data6 : vector8(1 to 2) := (others => x"FF");
+  signal data7 : vector8(1 to 2) := (others => x"FF");
   
   signal fake_vsync : std_logic := '1';
   signal fake_vsync_counter : integer range 0 to 793894 := 0;
@@ -112,7 +119,9 @@ architecture Behavioral of main is
   
   type uart_states is (main_cmd, reset_data, button_data_cmd, setup_cmd_data1, setup_cmd_data2, setup_cmd_data3, setup_cmd_data4);
   signal uart_state : uart_states := main_cmd;
-  signal data_controller_id : integer range 1 to 8;
+  signal data_controller_id : integer range 1 to 2;
+  signal data_byte_id : integer range 1 to 2;
+
 
 
   type uart_tx_states is (wait_tx_buffer, wait_timer);
@@ -127,10 +136,10 @@ architecture Behavioral of main is
   signal button_state : integer range 0 to 3 := 0;
   
   
-  type vector8 is array (natural range <>) of std_logic_vector(7 downto 0);
-  signal buffer_new_data : vector8(1 to 2);
+  type vector16 is array (natural range <>) of std_logic_vector(15 downto 0);
+  signal buffer_new_data : vector16(1 to 2);
   signal buffer_write : std_logic_vector(1 to 2);
-  signal buffer_data : vector8(1 to 2);
+  signal buffer_data : vector16(1 to 2);
   signal buffer_read : std_logic_vector(1 to 2);
   signal buffer_empty : std_logic_vector(1 to 2);
   signal buffer_full : std_logic_vector(1 to 2);
@@ -151,19 +160,19 @@ begin
                         tx_out => TX);
 
 
-    data_filter: filter port map (signal_in => SDATA_in,
-                                  clk => CLK,
-                                  signal_out => SDATA_in_f);
-                                 
-    clock_filter: filter port map (signal_in => SCLK_in,
-                                   clk => CLK,
-                                   signal_out => SCLK_in_f);
   
-    vsync_filter: filter port map (signal_in => vsync_in,
+    vsync_filter: filter port map (signal_in => debug(7),
                                    clk => CLK,
                                    signal_out => vsync_in_f);
   GENERATE_CONTROLLERS:
-  for I in 1 to 2 generate
+  for I in 1 to 2 generate                                 
+    data_filter: filter port map (signal_in => console_d0_in(I),
+                                  clk => CLK,
+                                  signal_out => console_d0_in_f(I));
+                                   
+    clock_filter: filter port map (signal_in => console_clock_in(I),
+                                   clk => CLK,
+                                   signal_out => console_clock_in_f(I));
 
     buffers: fifo port map ( data_in => buffer_new_data(I),
                              write_en => buffer_write(I),
@@ -175,67 +184,6 @@ begin
                              clear => buffer_clear(I));
   end generate GENERATE_CONTROLLERS;
 
-
---  -- RX process
---  uart_recieve_btye: process(CLK)
---    variable button_state2 : integer range 0 to 3 := 0;
---	begin
---		if (rising_edge(CLK)) then
---      uart_data_recieved <= '0';
---    
---			if (uart_byte_waiting = '1' and uart_data_recieved = '0') then
---        case data_from_uart is
---          when x"77" => -- 'w'
---            hz_timer_length <= hz_timer_length + 3200;
---            hz_timer_ms10 <= hz_timer_ms10 + 1;
---          
---          when x"73" => -- 's'
---            hz_timer_length <= hz_timer_length - 3200;
---            hz_timer_ms10 <= hz_timer_ms10 - 1;
---          
---          when x"66" => -- 'f'
---            button_state2 := button_state2 + 1;
---            if (button_state2 = 2) then
---              button_state2 := 0;
---            end if;
---          
---          when others =>
---        end case;
---        
---        uart_data_recieved <= '1';
---
---			end if;
---      
---      if (fake_vsync /= prev_vsync and fake_vsync = '0') then
---        if (button_state2 = 0) then
---          data6 <= x"7F";
---          data7 <= x"FE";
---          button_state2 := button_state2 + 1;
---          
---        elsif (button_state2 = 1) then
---          data6 <= x"BF";
---          data7 <= x"FD";
---          
---          button_state2 := button_state2 + 1;
---          
---        elsif (button_state2 = 2) then
---          data6 <= x"7F";
---          data7 <= x"FE";
---          
---          button_state2 := button_state2 + 1;
---          
---        else
---          data6 <= x"BF";
---          data7 <= x"FD";
---          
---          button_state2 := 0;
---        end if;
---      end if;
---      
---      prev_vsync <= fake_vsync;
---
---    end if;
---	end process;
   
   
   uart_recieve_btye: process(CLK)
@@ -263,15 +211,27 @@ begin
             end case;
 
           when button_data_cmd =>
-            buffer_new_data(data_controller_id) <= data_from_uart;
-            
-            buffer_write(data_controller_id) <= '1';
-            if (data_controller_id = 1) then
-              data_controller_id <= 2;
+            -- Store this byte of data in the right spot
+            if (data_byte_id = 1) then
+              buffer_new_data(data_controller_id) <= "11111111" & data_from_uart;
             else
-              uart_state <= main_cmd;
+              buffer_new_data(data_controller_id) <= data_from_uart & buffer_new_data(data_controller_id)(7 downto 0);
             end if;
-
+            
+            -- Do we need to go to the next controller?
+            if (data_byte_id = 2 ) then
+              -- Store the data in the fifo
+              buffer_write(data_controller_id) <= '1';
+              data_byte_id <= 1;
+              if (data_controller_id = 1) then
+                data_controller_id <= 2;
+              else
+                uart_state <= main_cmd;
+              end if;
+            else
+              -- Go to the next byte
+              data_byte_id <= data_byte_id + 1;
+            end if;
           when others =>
             uart_state <= main_cmd;
                                 
@@ -295,17 +255,11 @@ begin
         
         buffer_read <= "11";
         
---        if (buffer_data(1)(1) = '0') then
---          data1 <= x"00"; 
---        --elsif (buffer_data(1)(0) = '0') then
---        --  data0 <= x"FF"; 
---        else
---          data0 <= x"80";
---        end if;
---        
-        data6 <= buffer_data(1)(0) & buffer_data(1)(2) & '1' & buffer_data(1)(5) & '1' & buffer_data(1)(4) & '1' & '1';
-        data7 <= '1' & buffer_data(1)(6) & '1' & buffer_data(1)(7) & '1' & '1' & buffer_data(1)(1) & buffer_data(1)(3);
---        data7 <= '1' & buffer_data(1)(6) & '1' & buffer_data(1)(7) & '1' & '1' & '1' & buffer_data(1)(3);
+        data6(1) <= buffer_data(1)(0) & buffer_data(1)(2) & '1' & buffer_data(1)(5) & buffer_data(1)(8) & buffer_data(1)(4) & '1' & '1';
+        data7(1) <= '1' & buffer_data(1)(6) & '1' & buffer_data(1)(7) & '1' & '1' & buffer_data(1)(1) & buffer_data(1)(3);
+        
+        data6(2) <= buffer_data(2)(0) & buffer_data(2)(2) & '1' & buffer_data(2)(5) & buffer_data(2)(8) & buffer_data(2)(4) & '1' & '1';
+        data7(2) <= '1' & buffer_data(2)(6) & '1' & buffer_data(2)(7) & '1' & '1' & buffer_data(2)(1) & buffer_data(2)(3);
       end if;
       
       prev_vsync <= fake_vsync;
@@ -313,156 +267,6 @@ begin
     end if;
 	end process;  
   
---  -- TX process
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      uart_write <= '0';
---      
---      if (uart_tx_state = wait_tx_buffer) then
---        if (uart_write = '0' and uart_buffer_full = '0') then
---          uart_write <= '1';
---          data_to_uart <= std_logic_vector(to_unsigned(hz_timer_ms10, 8));
---          
---          uart_tx_timer <= 0;
---          uart_tx_state <= wait_timer;
---        end if;
---      elsif (uart_tx_state = wait_timer) then
---        if (uart_tx_timer = 160000) then 
---          uart_tx_state <= wait_tx_buffer;
---        else
---          uart_tx_timer <= uart_tx_timer + 1;
---        end if;
---      end if;
---    end if;
---  end process;  
-
---  -- Hz timer
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      if (fake_vsync = '1') then
---        if (fake_vsync_counter >= hz_timer_length) then
---          fake_vsync <= '0';
---          fake_vsync_counter <= 0;
---        else
---          fake_vsync_counter <= fake_vsync_counter + 1;
---        end if;
---      else
---        if (fake_vsync_counter = 6106) then
---          fake_vsync <= '1';
---          fake_vsync_counter <= 0;
---        else
---          fake_vsync_counter <= fake_vsync_counter + 1;
---        end if;
---      end if;
---    end if;
---  end process;
-  
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      if (change_sig_state = wait_vsync1_0) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '0') then
---          fake_vsync <= '0';
---          change_sig_state <= wait_vsync1_1;
---        end if;
---      elsif (change_sig_state = wait_vsync1_1) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '1') then
---          fake_vsync <= '1';
---          change_sig_state <= wait_vsync2_0;
---        end if;
---      elsif (change_sig_state = wait_vsync2_0) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '0') then
---          change_sig_state <= wait_vsync2_1;
---        end if;
---      elsif (change_sig_state = wait_vsync2_1) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '1') then
---          change_sig_state <= wait_timer_0;
---          change_sig_timer <= 0;
---        end if;
---      elsif (change_sig_state = wait_timer_0) then
---        if (change_sig_timer = 260830) then
---          fake_vsync <= '0';
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer_1;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer_1) then
---        if (change_sig_timer = 6106) then
---          fake_vsync <= '1';
---          change_sig_state <= wait_vsync3_0;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_vsync3_0) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '0') then
---          change_sig_state <= wait_vsync3_1;
---        end if;
---      elsif (change_sig_state = wait_vsync3_1) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '1') then
---          change_sig_state <= wait_vsync1_0;
---        end if;
---      end if;
---      
---      prev_vsync_in_f <= vsync_in_f;
---    end if;
---  end process;
-  
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      if (change_sig_state = wait_vsync1_0) then
---        if (vsync_in_f /= prev_vsync_in_f and vsync_in_f = '0') then
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer3_0;
---        end if;
---      elsif (change_sig_state = wait_timer3_0) then
---        if (change_sig_timer = 512000) then
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer3_1;
---          fake_vsync <= '0';
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer3_1) then
---        if (change_sig_timer = 6106) then
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer_0;
---          fake_vsync <= '1';
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer_0) then
---        if (change_sig_timer = 794668) then
---          fake_vsync <= '0';
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer_1;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer_1) then
---        if (change_sig_timer = 6106) then
---          fake_vsync <= '1';
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer2;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer2) then
---        if (change_sig_timer = 320) then
---          change_sig_state <= wait_vsync1_0;
---          change_sig_timer <= 0;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      end if;
---      
---      prev_vsync_in_f <= vsync_in_f;
---    end if;
---  end process;
-
   process (clk) is
   begin
     if (rising_edge(clk)) then
@@ -481,97 +285,45 @@ begin
         end if;
       elsif (change_sig_state = wait_timer3_1) then
         if (change_sig_timer = 6106) then
---          change_sig_state <= wait_timer_1;
           change_sig_state <= wait_vsync1_0;
           change_sig_timer <= 0;
           fake_vsync <= '1';
         else
           change_sig_timer <= change_sig_timer + 1;
         end if;
---      elsif (change_sig_state = wait_timer_1) then
---        if (change_sig_timer = 266667) then
---          fake_vsync <= '0';
---          change_sig_timer <= 0;
---          change_sig_state <= wait_timer2;
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
---      elsif (change_sig_state = wait_timer2) then
---        if (change_sig_timer = 6106) then
---          change_sig_state <= wait_vsync1_0;
---          change_sig_timer <= 0;
---          fake_vsync <= '1';
---        else
---          change_sig_timer <= change_sig_timer + 1;
---        end if;
-  
       end if;
       
       prev_vsync_in_f <= vsync_in_f;
     end if;
   end process;
 
---  -- Change button every signal
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      if (fake_vsync /= prev_vsync and fake_vsync = '0') then
---        data6(7) <= not data6(7);
---        data7(1) <= not data7(1);
---      end if;
---      
---      prev_vsync <= fake_vsync;
---    end if;
---  end process;
-  
---  -- State machine button press change
---  process (clk) is
---  begin
---    if (rising_edge(clk)) then
---      if (fake_vsync /= prev_vsync and fake_vsync = '0') then
---        if (button_state = 0 or button_state = 1) then
---          data6 <= x"FF";
---          data7 <= x"FD";
---          
---          button_state <= button_state + 1;
---        else
---          data6 <= x"7F";
---          data7 <= x"FF";
---          
---          button_state <= 0;
---        end if;
---      end if;
---      
---      prev_vsync <= fake_vsync;
---    end if;
---  end process;
 
   process (clk) is
   begin
     if (rising_edge(clk)) then
       case i2c_state is
         when idle =>
-          SCLK_OE <= '1';
-          SDATA_OE <= '1';
+          console_clock_oe(1) <= '1';
+          console_d0_OE(1) <= '1';
           clk_high_timer <= 0;
           
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '0') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '0') then
             i2c_state <= reading_addr;
             bits_finished <= 0;
             i2c_addr_rx_data <= (others => '0');
           end if;
           
         when reading_addr =>
-          if (SCLK_in_f /= last_sclk) then
-            if (SCLK_in_f = '1') then
-              i2c_addr_rx_data <= i2c_addr_rx_data(6 downto 0) & SDATA_in;
+          if (console_clock_in_f(1) /= last_sclk) then
+            if (console_clock_in_f(1) = '1') then
+              i2c_addr_rx_data <= i2c_addr_rx_data(6 downto 0) & console_d0_in_f(1);
               bits_finished <= bits_finished + 1;
             else
               
               if (bits_finished = 8) then
                 if (i2c_addr_rx_data(7 downto 1) = "1010010") then
                   i2c_state <= wait_for_addr_ack;
-                  SDATA_OE <= '0';
+                  console_d0_oe(1) <= '0';
                 else
                   i2c_state <= ignore;
                 end if;
@@ -581,48 +333,28 @@ begin
           end if;
         
         when wait_for_addr_ack =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '1') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '1') then
             i2c_state <= addr_ack_high;
           end if;
           
         when addr_ack_high =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '0') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '0') then
             if (i2c_addr_rx_data(0) = '0') then
               i2c_state <= reading;
               i2c_rx_data <= (others => '0');
               bytes_received <= 0;
               
-              SDATA_OE <= '1';
+              console_d0_oe(1) <= '1';
             else
               i2c_state <= writing;
               i2c_tx_data <= (others => '0');
               if (last_command = x"FA") then
                 i2c_tx_data(167 downto 120) <= x"01" & x"00" & x"A4" & x"20" & x"03" & x"01";
               elsif (last_command = x"00") then
---                if (empty_input = '0') then
-                
-                  i2c_tx_data(167 downto 104) <= data0 & data1 & data2 & data3 & x"00" & x"00" & data6 & data7;
-                  --data6(7) <= not data6(7);
-                  --data7(1) <= not data7(1);
-                --if (first_poll = '1') then
+                  i2c_tx_data(167 downto 104) <= data0(1) & data1(1) & data2(1) & data3(1) & x"00" & x"00" & data6(1) & data7(1);
                   i2c_state <= wait_for_vsync;
-                  SCLK_OE <= '0';
-                  SDATA_OE <= '1';
-                --  first_poll <= '0';
-                --else
-                --  first_poll <= '1';
-                --end if;
-                  
---                  empty_input <= '1';
---                else
-                  
-                  
---                  i2c_tx_data(167 downto 104) <= x"83" & x"86" & x"85" & x"86" & x"00" & x"00" & data6 & data7;
---                  --data6(7) <= not data6(7);
---                  --data7(1) <= not data7(1);
---                  
---                  empty_input <= '0';
---                end if;
+                  console_clock_OE(1) <= '0';
+                  console_d0_oe(1) <= '1';
               end if;
               
             end if;
@@ -632,9 +364,9 @@ begin
           end if;
           
         when reading =>
-          if (SCLK_in_f /= last_sclk) then
-            if (SCLK_in_f = '1') then
-              i2c_rx_data <= i2c_rx_data(6 downto 0) & SDATA_in;
+          if (console_clock_in_f(1) /= last_sclk) then
+            if (console_clock_in_f(1) = '1') then
+              i2c_rx_data <= i2c_rx_data(6 downto 0) & console_d0_in_f(1);
               bits_finished <= bits_finished + 1;
             else
               if (bits_finished = 8) then
@@ -645,47 +377,47 @@ begin
                 
                 bytes_received <= bytes_received + 1;
                 i2c_state <= wait_for_read_ack;
-                SDATA_OE <= '0';
+                console_d0_oe(1) <= '0';
               end if;
             end if;
           end if;
           
         when wait_for_read_ack =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '1') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '1') then
             i2c_state <= read_ack_high;
           end if;
           
         when read_ack_high =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '0') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '0') then
             i2c_state <= reading;
 
-            SDATA_OE <= '1';
+            console_d0_oe(1) <= '1';
             bits_finished <= 0;
           end if;
         
         when writing =>
-          SDATA_OE <= i2c_tx_data(167);
+          console_d0_oe(1) <= i2c_tx_data(167);
           
-          if (SCLK_in_f /= last_sclk) then
-            if (SCLK_in_f = '1') then
+          if (console_clock_in_f(1) /= last_sclk) then
+            if (console_clock_in_f(1) = '1') then
               bits_finished <= bits_finished + 1;
             else
               i2c_tx_data <= i2c_tx_data(166 downto 0) & '0';
               if (bits_finished = 8) then
                 i2c_state <= wait_for_write_ack;
-                SDATA_OE <= '1';
+                console_d0_oe(1) <= '1';
               end if;
               
             end if;
           end if;
         
         when wait_for_write_ack =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '1') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '1') then
             i2c_state <= write_ack_high;
           end if;
 
         when write_ack_high =>
-          if (SCLK_in_f /= last_sclk and SCLK_in_f = '0') then
+          if (console_clock_in_f(1) /= last_sclk and console_clock_in_f(1) = '0') then
             i2c_state <= writing;
 
             bits_finished <= 0;
@@ -696,7 +428,7 @@ begin
             i2c_state <= writing;
 
             bits_finished <= 0;
-            SCLK_OE <= '1';
+            console_clock_OE(1) <= '1';
           end if;
 
         
@@ -706,37 +438,52 @@ begin
         
       end case;
 
-      if (i2c_state /= idle and SCLK_in_f = '1') then
+      if (i2c_state /= idle and console_clock_in_f(1) = '1') then
         if (clk_high_timer = 320) then
           i2c_state <= idle;
         else
           clk_high_timer <= clk_high_timer + 1;
         end if;
-      elsif (SCLK_in_f = '0') then
+      elsif (console_clock_in_f(1) = '0') then
         clk_high_timer <= 0;
       end if;
       
-      last_sclk <= SCLK_in_f;
+      last_sclk <= console_clock_in_f(1);
       last_vsync <= fake_vsync;
     end if;
   end process;
 
+console_d0_out(1) <= '0';
+console_d0_out(2) <= '0';
+console_d1_out(1) <= '1';
+console_d1_out(2) <= '1';
+
+console_d1_oe(1) <= '0';
+console_d1_oe(2) <= '0';
+
+console_clock_out(1) <= '0';
+console_clock_out(2) <= '0';
+
 --fake_vsync <= vsync_in_f;
 
-SCLK_out <= '0';
---SCLK_OE <= '1';
-SDATA_out <= '0';
-
-debug2 <= toggle_signal;
 debug(0) <= fake_vsync;
---debug(0) <= TX;
 debug(1) <= TX;
 debug(2) <= RX;
-debug(3) <= '0';
+debug(3) <= debug(7);
+debug(4) <= '0';
+debug(5) <= '0';
+debug(6) <= '0';
+--debug(7) <= '0';
+
+visualization_d0 <= "00";
+visualization_d1 <= "00";
+visualization_clock <= "00";
+visualization_latch <= "00";
+
+console_clock_oe(2) <= '1';
+console_d0_oe(2) <= '1';
 
 TX_real <= TX;
-
---TX <= '0';
 
 end Behavioral;
 

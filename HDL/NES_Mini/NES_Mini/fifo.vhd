@@ -6,9 +6,9 @@ entity fifo is
     Generic (
         constant FIFO_DEPTH : positive := 150
      );
-    Port ( data_in : in  STD_LOGIC_VECTOR (7 downto 0);
+    Port ( data_in : in  STD_LOGIC_VECTOR (15 downto 0);
            write_en : in  STD_LOGIC;
-           data_out : out  STD_LOGIC_VECTOR (7 downto 0);
+           data_out : out  STD_LOGIC_VECTOR (15 downto 0);
            read_en : in  STD_LOGIC;
            clk : in  STD_LOGIC;
            empty : out  STD_LOGIC;
@@ -17,7 +17,7 @@ entity fifo is
 end fifo;
 
 architecture Behavioral of fifo is
-  type data_buffer is array(0 to FIFO_DEPTH-1) of std_logic_vector(7 downto 0);
+  type data_buffer is array(0 to FIFO_DEPTH-1) of std_logic_vector(15 downto 0);
   signal queue : data_buffer;
     
   signal buffer_tail : integer range 0 to FIFO_DEPTH-1 := 0;

@@ -471,10 +471,12 @@ class CLI(cmd.Cmd):
     def do_off(self, data):
         """Turns off the SNES via reset pin, if connected"""
         ser.write("sd1")
+        print("Console off.")
 
     def do_on(self, data):
         """Turns on the SNES via reset pin, if connected"""
         ser.write("sd0")
+        print("Console on.")
 
     def do_restart(self, data):
         """Turns the SNES console off, restarts the current run, and turns the SNES console on"""
@@ -483,6 +485,7 @@ class CLI(cmd.Cmd):
         self.do_reset(data)
         time.sleep(1)
         self.do_on(data)
+        print("The restart process is complete!")
 
     def do_modify_frames(self, data):
         """Modify the initial blank input frames"""

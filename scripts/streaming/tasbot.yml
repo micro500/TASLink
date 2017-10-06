@@ -1,9 +1,0 @@
-- option1: true
-  source: run1.r08
-  value1: '23'
-- option1: false
-  source: run2.r08
-  value1: '43'
-- option1: true
-  source: run3.r08
-  value1: '77'

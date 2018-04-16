@@ -840,7 +840,7 @@ class CLI(cmd.Cmd):
         while True:
             try:
                 dummyFrames = readint("Number of blank input frames to prepend? ")
-                if window < 0:
+                if dummyFrames < 0:
                     print("ERROR: Please enter a positive number!\n")
                     continue
                 else:

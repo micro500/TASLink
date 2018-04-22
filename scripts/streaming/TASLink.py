@@ -36,6 +36,8 @@ prebuffer = 60
 ser = None
 supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 
+EVERDRIVEFRAMES = 47 # Number of frames to offset dummy frames by when running on an everdrive
+
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 # important global variables to keep track of
@@ -134,7 +136,7 @@ class Transition(object):
     dpcmFix = None
 
 class TASRun(object):
-    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix):
+    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix, is_everdrive):
         self.numControllers = num_controllers
         self.portsList = ports_list
         self.controllerType = controller_type
@@ -145,6 +147,7 @@ class TASRun(object):
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
         self.transitions = []
+        self.isEverdrive = is_everdrive
 
         self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
 
@@ -184,7 +187,10 @@ class TASRun(object):
             working_string = customCommand
             for bytes in range(bytesPerCommand):
                 working_string += chr(0xFF)
-            buffer[frame] = working_string
+            if self.isEverdrive:
+                buffer[EVERDRIVEFRAMES+frame] = working_string
+            else:
+                buffer[frame] = working_string
 
         frameno = 0
         invertedfile = [""] * len(wholefile)
@@ -525,9 +531,15 @@ class CLI(cmd.Cmd):
                 working_string += chr(0xFF)
 
             for count in range(difference):
-                runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
+                if run.isEverdrive:
+                    runStatuses[index].inputBuffer.insert(EVERDRIVEFRAMES, working_string)
+                else:
+                    runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
-            runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
+            if run.isEverdrive:
+                runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[0:EVERDRIVEFRAMES]+runStatuses[index].inputBuffer[EVERDRIVEFRAMES-difference:]
+            else:
+                runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
 
         runStatuses[index].isRunModified = True
 
@@ -847,8 +859,18 @@ class CLI(cmd.Cmd):
                     break
             except ValueError:
                 print("ERROR: Please enter integers!\n")
+        # is the run on a everdrive
+        while True:
+            is_everdrive = raw_input("Is the run playback on a Everdrive (y/n)? ")
+            if is_everdrive.lower() == 'y':
+                is_everdrive = True
+                break
+            elif is_everdrive.lower() == 'n':
+                is_everdrive = False
+                break
+            print("ERROR: Please enter y for yes or n for no!\n")
         # create TASRun object and assign it to our global, defined above
-        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
+        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix, is_everdrive)
 
         rs = RunStatus()
         rs.customCommand = setupCommunication(tasrun)

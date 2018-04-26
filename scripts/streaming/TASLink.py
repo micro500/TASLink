@@ -36,7 +36,7 @@ prebuffer = 60
 ser = None
 supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 
-EVERDRIVEFRAMES = 47 # Number of frames to offset dummy frames by when running on an everdrive
+EVERDRIVEFRAMES = 61 # Number of frames to offset dummy frames by when running on an everdrive
 
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 

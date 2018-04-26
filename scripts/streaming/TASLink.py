@@ -756,6 +756,47 @@ class CLI(cmd.Cmd):
         t.window = window
         runStatuses[selected_run].tasRun.addTransition(t)
         runStatuses[selected_run].isRunModified = True
+        
+    def do_toggle_ed_header(self):
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        run = runStatuses[selected_run].tasRun
+        
+        if run.isEverdrive == 1:
+            print("Removing Everdrive Header!\n")
+            del runStatuses[selected_run].tasRun.inputBuffer[EVERDRIVEFRAMES:]
+            runStatuses[selected_run].tasRun.isEverdrive = 0
+            runStatuses[selected_run].isRunModified = True
+            
+        if run.isEverdrive == 0:
+            print("Adding Everdrive Header!\n")
+            blankframe = runStatuses[selected_run].customCommand
+            max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
+            # next we take controller type into account
+            if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
+                max *= 2
+            elif run.controllerType == CONTROLLER_MULTITAP:
+                max *= 4
+            for bytes in range(max):
+                blankframe += chr(0xFF)
+            startframe = runStatuses[selected_run].customCommand
+            max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
+            # next we take controller type into account
+            if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
+                max *= 2
+            elif run.controllerType == CONTROLLER_MULTITAP:
+                max *= 4
+            for bytes in range(max):
+                if bytes == 1:
+                    startframe += chr(0xEF) # press start on controller 1
+                else:
+                    startframe += chr(0xFF)
+            runStatuses[selected_run].tasRun.inputBuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
+            for frame in range(0, EVERDRIVEFRAMES-1):
+                runStatuses[selected_run].tasRun.inputBuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
+            runStatuses[selected_run].tasRun.isEverdrive = 1
+            runStatuses[selected_run].isRunModified = True
 
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
@@ -861,7 +902,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Please enter integers!\n")
         # is the run on a everdrive
         while True:
-            is_everdrive = raw_input("Is the run playback on a Everdrive (y/n)? ")
+            is_everdrive = raw_input("Does the input file have a header for playback on an Everdrive (y/n)? ")
             if is_everdrive.lower() == 'y':
                 is_everdrive = True
                 break

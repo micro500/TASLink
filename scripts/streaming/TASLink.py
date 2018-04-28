@@ -374,6 +374,37 @@ def releaseConsolePort(port, type):
             consoleLanes[lanes[port][0]] = 0
             consoleLanes[lanes[port][1]] = 0
 
+def remove_everdrive_header(tasRun, runid):
+    print("Removing Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    oldbuffer = newbuffer
+    newbuffer = oldbuffer[EVERDRIVEFRAMES:]
+    runStatuses[runid].inputBuffer = newbuffer
+
+def add_everdrive_header(tasRun, runid):
+    print("Adding Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    blankframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif tasRun.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        blankframe += chr(0xFF)
+    startframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    for bytes in range(max):
+        if bytes == 0:
+            startframe += chr(0xEF) # press start on controller 1
+        else:
+            startframe += chr(0xFF)
+    newbuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
+    for frame in range(0, EVERDRIVEFRAMES-1):
+        newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
+    runStatuses[runid].inputBuffer = newbuffer
 
 # return false exits the function
 # return true exits the whole CLI
@@ -757,46 +788,16 @@ class CLI(cmd.Cmd):
         runStatuses[selected_run].tasRun.addTransition(t)
         runStatuses[selected_run].isRunModified = True
         
-    def do_toggle_ed_header(self):
+    def do_toggle_everdrive(self, data):
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return
-        run = runStatuses[selected_run].tasRun
-        
-        if run.isEverdrive == 1:
-            print("Removing Everdrive Header!\n")
-            del runStatuses[selected_run].tasRun.inputBuffer[EVERDRIVEFRAMES:]
-            runStatuses[selected_run].tasRun.isEverdrive = 0
-            runStatuses[selected_run].isRunModified = True
-            
-        if run.isEverdrive == 0:
-            print("Adding Everdrive Header!\n")
-            blankframe = runStatuses[selected_run].customCommand
-            max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
-            # next we take controller type into account
-            if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
-                max *= 2
-            elif run.controllerType == CONTROLLER_MULTITAP:
-                max *= 4
-            for bytes in range(max):
-                blankframe += chr(0xFF)
-            startframe = runStatuses[selected_run].customCommand
-            max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
-            # next we take controller type into account
-            if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
-                max *= 2
-            elif run.controllerType == CONTROLLER_MULTITAP:
-                max *= 4
-            for bytes in range(max):
-                if bytes == 1:
-                    startframe += chr(0xEF) # press start on controller 1
-                else:
-                    startframe += chr(0xFF)
-            runStatuses[selected_run].tasRun.inputBuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
-            for frame in range(0, EVERDRIVEFRAMES-1):
-                runStatuses[selected_run].tasRun.inputBuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
-            runStatuses[selected_run].tasRun.isEverdrive = 1
-            runStatuses[selected_run].isRunModified = True
+        if runStatuses[selected_run].tasRun.isEverdrive == True:
+            remove_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            runStatuses[selected_run].tasRun.isEverdrive = False
+        elif runStatuses[selected_run].tasRun.isEverdrive == False:
+            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            runStatuses[selected_run].tasRun.isEverdrive = True
 
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""

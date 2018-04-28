@@ -116,6 +116,10 @@ def load(filename):
 
     selected_run = len(runStatuses) - 1
 
+    # add everdrive header if needed
+    if run.isEverdrive == True:
+        add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+
     send_frames(selected_run, prebuffer)
 
     print("Run has been successfully loaded!")
@@ -924,6 +928,10 @@ class CLI(cmd.Cmd):
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1
+
+        # add everdrive header if needed
+        if tasrun.isEverdrive == True:
+            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
 
         send_frames(selected_run, prebuffer)
 

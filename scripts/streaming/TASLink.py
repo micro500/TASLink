@@ -192,7 +192,7 @@ class TASRun(object):
             for bytes in range(bytesPerCommand):
                 working_string += chr(0xFF)
             if self.isEverdrive:
-                buffer[EVERDRIVEFRAMES+frame] = working_string
+                buffer[frame] = working_string
             else:
                 buffer[frame] = working_string
 

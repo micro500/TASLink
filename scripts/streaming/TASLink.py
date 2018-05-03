@@ -904,7 +904,7 @@ class CLI(cmd.Cmd):
                 print("ERROR: Please enter integers!\n")
         # is the run on a everdrive
         while True:
-            is_everdrive = raw_input("Does the input file have a header for playback on an Everdrive (y/n)? ")
+            is_everdrive = raw_input("Add a header for playback on an Everdrive (y/n)? ")
             if is_everdrive.lower() == 'y':
                 is_everdrive = True
                 break

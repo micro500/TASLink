@@ -36,6 +36,8 @@ prebuffer = 60
 ser = None
 supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 
+EVERDRIVEFRAMES = 61 # Number of frames to offset dummy frames by when running on an everdrive
+
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
 # important global variables to keep track of
@@ -114,6 +116,10 @@ def load(filename):
 
     selected_run = len(runStatuses) - 1
 
+    # add everdrive header if needed
+    if run.isEverdrive == True:
+        add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+
     send_frames(selected_run, prebuffer)
 
     print("Run has been successfully loaded!")
@@ -134,7 +140,7 @@ class Transition(object):
     dpcmFix = None
 
 class TASRun(object):
-    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix):
+    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix, is_everdrive):
         self.numControllers = num_controllers
         self.portsList = ports_list
         self.controllerType = controller_type
@@ -145,6 +151,7 @@ class TASRun(object):
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
         self.transitions = []
+        self.isEverdrive = is_everdrive
 
         self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
 
@@ -368,6 +375,37 @@ def releaseConsolePort(port, type):
             consoleLanes[lanes[port][0]] = 0
             consoleLanes[lanes[port][1]] = 0
 
+def remove_everdrive_header(tasRun, runid):
+    print("Removing Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    oldbuffer = newbuffer
+    newbuffer = oldbuffer[EVERDRIVEFRAMES:]
+    runStatuses[runid].inputBuffer = newbuffer
+
+def add_everdrive_header(tasRun, runid):
+    print("Adding Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    blankframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif tasRun.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        blankframe += chr(0xFF)
+    startframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    for bytes in range(max):
+        if bytes == 0:
+            startframe += chr(0xEF) # press start on controller 1
+        else:
+            startframe += chr(0xFF)
+    newbuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
+    for frame in range(0, EVERDRIVEFRAMES-1):
+        newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
+    runStatuses[runid].inputBuffer = newbuffer
 
 # return false exits the function
 # return true exits the whole CLI
@@ -525,9 +563,15 @@ class CLI(cmd.Cmd):
                 working_string += chr(0xFF)
 
             for count in range(difference):
-                runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
+                if run.isEverdrive:
+                    runStatuses[index].inputBuffer.insert(EVERDRIVEFRAMES, working_string)
+                else:
+                    runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
-            runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
+            if run.isEverdrive:
+                runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[0:EVERDRIVEFRAMES]+runStatuses[index].inputBuffer[EVERDRIVEFRAMES-difference:]
+            else:
+                runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
 
         runStatuses[index].isRunModified = True
 
@@ -744,6 +788,17 @@ class CLI(cmd.Cmd):
         t.window = window
         runStatuses[selected_run].tasRun.addTransition(t)
         runStatuses[selected_run].isRunModified = True
+        
+    def do_toggle_everdrive(self, data):
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        if runStatuses[selected_run].tasRun.isEverdrive == True:
+            remove_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            runStatuses[selected_run].tasRun.isEverdrive = False
+        elif runStatuses[selected_run].tasRun.isEverdrive == False:
+            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            runStatuses[selected_run].tasRun.isEverdrive = True
 
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
@@ -847,8 +902,18 @@ class CLI(cmd.Cmd):
                     break
             except ValueError:
                 print("ERROR: Please enter integers!\n")
+        # is the run on a everdrive
+        while True:
+            is_everdrive = raw_input("Add a header for playback on an Everdrive (y/n)? ")
+            if is_everdrive.lower() == 'y':
+                is_everdrive = True
+                break
+            elif is_everdrive.lower() == 'n':
+                is_everdrive = False
+                break
+            print("ERROR: Please enter y for yes or n for no!\n")
         # create TASRun object and assign it to our global, defined above
-        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
+        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix, is_everdrive)
 
         rs = RunStatus()
         rs.customCommand = setupCommunication(tasrun)
@@ -860,6 +925,10 @@ class CLI(cmd.Cmd):
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1
+
+        # add everdrive header if needed
+        if tasrun.isEverdrive == True:
+            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
 
         send_frames(selected_run, prebuffer)
 

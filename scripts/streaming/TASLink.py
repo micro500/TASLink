@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 import os
 import serial
 from serial import SerialException
@@ -320,7 +321,7 @@ def setupCommunication(tasrun):
     else:
         print(command, bytestring, controllerMask)
 
-    # finnal, clear lanes and get ready to rock
+    # final, clear lanes and get ready to rock
     if TASLINK_CONNECTED:
         ser.write("r" + chr(int(controllerMask, 2)))
     else:
@@ -714,7 +715,7 @@ class CLI(cmd.Cmd):
             return False
         for index, runstatus in enumerate(runStatuses):
             print("Run #" + str(index + 1) + ": ")
-            print yaml.dump(runstatus.tasRun)
+            print(yaml.dump(runstatus.tasRun))
         pass
 
     def do_select(self, data):
@@ -1015,7 +1016,7 @@ if TASLINK_CONNECTED and not t.isAlive():
     ser.close()
     sys.exit(0)
 
-# t3h urn
+# the run
 if TASLINK_CONNECTED:
     while t.isAlive():
         if not t.isAlive():

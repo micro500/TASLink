@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 import serial
 import sys
 from serial import SerialException

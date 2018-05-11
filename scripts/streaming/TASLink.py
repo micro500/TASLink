@@ -321,7 +321,7 @@ def setupCommunication(tasrun):
     else:
         print(command, bytestring, controllerMask)
 
-    # final, clear lanes and get ready to rock
+    # finally, clear lanes and get ready to rock
     if TASLINK_CONNECTED:
         ser.write("r" + chr(int(controllerMask, 2)))
     else:

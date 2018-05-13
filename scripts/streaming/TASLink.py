@@ -56,6 +56,7 @@ class RunStatus(object):
     dpcmState = None
     windowState = None
     frameCount = 0
+    defaultSave = None
 
 def readint(question):
     num = -1
@@ -113,6 +114,7 @@ def load(filename):
     rs.isRunModified = False
     rs.dpcmState = run.dpcmFix
     rs.windowState = run.window
+    rs.defaultSave = filename # Default Save Name for loaded files is the file that was loaded
     runStatuses.append(rs)
 
     selected_run = len(runStatuses) - 1
@@ -923,6 +925,8 @@ class CLI(cmd.Cmd):
         rs.isRunModified = True
         rs.dpcmState = dpcm_fix
         rs.windowState = window
+        # Remove Extension from filename 3 times then add ".tcf" to generate a Default Save Name
+        rs.defaultSave = os.path.splitext(os.path.splitext(os.path.splitext(fileName)[0])[0])[0] + ".tcf"
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1

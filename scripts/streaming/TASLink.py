@@ -500,7 +500,9 @@ class CLI(cmd.Cmd):
         else:
             runID = selected_run + 1
 
-        filename = raw_input("Please enter filename: ")
+        filename = raw_input("Please enter filename [def=" + runStatuses[runID - 1].defaultSave + "]: ")
+        if filename == "":
+            filename = runStatuses[runID - 1].defaultSave
 
         with open(filename, 'w') as f:
             f.write(yaml.dump(runStatuses[runID - 1].tasRun))

@@ -37,6 +37,10 @@ prebuffer = 60
 ser = None
 supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 
+# Default Options for new runs
+# 'Controller Type', 'Overread', 'DPCM Fix', 'Window Mode', 'Dummy Frames'
+DEFAULTS = ["normal", 0, "n", 0, 0]
+
 EVERDRIVEFRAMES = 61 # Number of frames to offset dummy frames by when running on an everdrive
 
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
@@ -56,6 +60,7 @@ class RunStatus(object):
     dpcmState = None
     windowState = None
     frameCount = 0
+    defaultSave = None
 
 def readint(question):
     num = -1
@@ -69,6 +74,14 @@ def readint(question):
         break
     return num
 
+def checkint(value):
+    try:
+        out = int(value)
+    except ValueError:
+        print("ERROR: Expected integer, but integer not found")
+        return False
+    return True
+
 def readfloat(question):
     num = -1
     while True:
@@ -80,6 +93,14 @@ def readfloat(question):
             continue
         break
     return num
+
+def checkfloat(value):
+    try:
+        out = float(value)
+    except ValueError:
+        print("ERROR: Expected float, but float not found")
+        return False
+    return True
 
 def getNextMask():
     for index,letter in enumerate(MASKS):
@@ -113,6 +134,7 @@ def load(filename):
     rs.isRunModified = False
     rs.dpcmState = run.dpcmFix
     rs.windowState = run.window
+    rs.defaultSave = filename # Default Save Name for loaded files is the file that was loaded
     runStatuses.append(rs)
 
     selected_run = len(runStatuses) - 1
@@ -498,7 +520,9 @@ class CLI(cmd.Cmd):
         else:
             runID = selected_run + 1
 
-        filename = raw_input("Please enter filename: ")
+        filename = raw_input("Please enter filename [def=" + runStatuses[runID - 1].defaultSave + "]: ")
+        if filename == "":
+            filename = runStatuses[runID - 1].defaultSave
 
         with open(filename, 'w') as f:
             f.write(yaml.dump(runStatuses[runID - 1].tasRun))
@@ -837,7 +861,9 @@ class CLI(cmd.Cmd):
         # get controller type
         while True:
             breakout = True
-            controllerType = raw_input("What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score)? ")
+            controllerType = raw_input("What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score) [def=" + DEFAULTS[0] + "]? ")
+            if controllerType == "":
+                controllerType = DEFAULTS[0]
             if controllerType.lower() not in ["normal", "y", "multitap", "four-score", "n", "m", "f"]:
                 print("ERROR: Invalid controller type!\n")
                 continue
@@ -860,14 +886,33 @@ class CLI(cmd.Cmd):
                 break
         # 8, 16, 24, or 32 bit
         while True:
-            controllerBits = readint("How many bits of data per controller (8, 16, 24, or 32)? ")
+            # determine default controller bit by checking input file type
+            ext = os.path.splitext(fileName)[1]
+            cbd = ""
+            if ext == ".r08":
+                cbd = 8
+            if ext == ".r16m":
+                cbd = 16
+            controllerBits = raw_input("How many bits of data per controller (8, 16, 24, or 32) [def=" + str(cbd) + "]? ")
+            if controllerBits == "":
+                controllerBits = cbd
+            if checkint(controllerBits):
+                controllerBits = int(controllerBits)
+            else:
+                continue
             if controllerBits != 8 and controllerBits != 16 and controllerBits != 24 and controllerBits != 32:
                 print("ERROR: Bits must be either 8, 16, 24, or 32!\n")
             else:
                 break
         # overread value
         while True:
-            overread = readint("Overread value (0 or 1... if unsure choose 0)? ")
+            overread = raw_input("Overread value (0 or 1... if unsure choose 0) [def=" + str(DEFAULTS[1]) + "]? ")
+            if overread == "":
+                overread = DEFAULTS[1]
+            if checkint(overread):
+                overread = int(overread)
+            else:
+                continue
             if overread != 0 and overread != 1:
                 print("ERROR: Overread be either 0 or 1!\n")
                 continue
@@ -875,7 +920,9 @@ class CLI(cmd.Cmd):
                 break
         # DPCM fix
         while True:
-            dpcm_fix = raw_input("Apply DPCM fix (y/n)? ")
+            dpcm_fix = raw_input("Apply DPCM fix (y/n) [def=" + DEFAULTS[2] + "]? ")
+            if dpcm_fix == "":
+                dpcm_fix = DEFAULTS[2]
             if dpcm_fix.lower() == 'y':
                 dpcm_fix = True
                 break
@@ -885,7 +932,13 @@ class CLI(cmd.Cmd):
             print("ERROR: Please enter y for yes or n for no!\n")
         # window mode 0-15.75ms
         while True:
-            window = readfloat("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? ")
+            window = raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=" + str(DEFAULTS[3]) + "]? ")
+            if window == "":
+                window = DEFAULTS[3]
+            if checkfloat(window):
+                window = int(window)
+            else:
+                continue
             if window < 0 or window > 15.25:
                 print("ERROR: Window out of range [0, 15.75])!\n")
             elif window % 0.25 != 0:
@@ -895,7 +948,13 @@ class CLI(cmd.Cmd):
         # dummy frames
         while True:
             try:
-                dummyFrames = readint("Number of blank input frames to prepend? ")
+                dummyFrames = raw_input("Number of blank input frames to prepend [def=" + str(DEFAULTS[4]) + "]? ")
+                if dummyFrames == "":
+                    dummyFrames = DEFAULTS[4]
+                if checkint(dummyFrames):
+                    dummyFrames = int(dummyFrames)
+                else:
+                    continue
                 if dummyFrames < 0:
                     print("ERROR: Please enter a positive number!\n")
                     continue
@@ -923,6 +982,8 @@ class CLI(cmd.Cmd):
         rs.isRunModified = True
         rs.dpcmState = dpcm_fix
         rs.windowState = window
+        # Remove Extension from filename 3 times then add ".tcf" to generate a Default Save Name
+        rs.defaultSave = os.path.splitext(os.path.splitext(os.path.splitext(fileName)[0])[0])[0] + ".tcf"
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1

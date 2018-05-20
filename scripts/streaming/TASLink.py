@@ -936,7 +936,7 @@ class CLI(cmd.Cmd):
             if window == "":
                 window = DEFAULTS[3]
             if checkfloat(window):
-                window = int(window)
+                window = float(window)
             else:
                 continue
             if window < 0 or window > 15.25:

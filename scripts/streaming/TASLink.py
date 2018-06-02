@@ -121,7 +121,110 @@ def load(filename):
     global selected_run
 
     with open(filename, 'r') as f:
-        run = yaml.load(f)
+        loadedrun = yaml.load(f)
+    # check for missing values from run
+    try:
+        numControllers = loadedrun.numControllers
+        portsList = loadedrun.portsList
+    except AttributeError:
+        print("ERROR: Missing Controller Count or Port Assignment!")
+        return False
+    try:
+        controllerType = loadedrun.controllerType
+        controllerBits = loadedrun.controllerBits
+    except AttributeError:
+        print("ERROR: Missing Controller Type!")
+        return False
+    try:
+        overread = loadedrun.overread
+    except AttributeError:
+        print("WARN: Overread Missing!")
+        while True:
+            overread = raw_input("Overread value (0 or 1... if unsure choose 0) [def=" + str(DEFAULTS[1]) + "]? ")
+            if overread == "":
+                overread = DEFAULTS[1]
+            if checkint(overread):
+                overread = int(overread)
+            else:
+                continue
+            if overread != 0 and overread != 1:
+                print("ERROR: Overread be either 0 or 1!\n")
+                continue
+            else:
+                break
+    try:
+        window = loadedrun.window
+    except AttributeError:
+        print("WARN: Window Missing!")
+        while True:
+            window = raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=" + str(DEFAULTS[3]) + "]? ")
+            if window == "":
+                window = DEFAULTS[3]
+            if checkfloat(window):
+                window = float(window)
+            else:
+                continue
+            if window < 0 or window > 15.25:
+                print("ERROR: Window out of range [0, 15.75])!\n")
+            elif window % 0.25 != 0:
+                print("ERROR: Window is not a multiple of 0.25!\n")
+            else:
+                break
+    try:
+        inputFile = loadedrun.inputFile
+        if not os.path.isfile(inputFile):
+            print("ERROR: Input File is Missing!")
+            return False
+    except AttributeError:
+        print("ERROR: No Input File") # Uhh ???
+        return False
+    try:
+        dummyFrames = loadedrun.dummyFrames
+    except AttributeError:
+        print("WARN: Dummy Frame Count Missing!")
+        while True:
+            try:
+                dummyFrames = raw_input("Number of blank input frames to prepend [def=" + str(DEFAULTS[4]) + "]? ")
+                if dummyFrames == "":
+                    dummyFrames = DEFAULTS[4]
+                if checkint(dummyFrames):
+                    dummyFrames = int(dummyFrames)
+                else:
+                    continue
+                if dummyFrames < 0:
+                    print("ERROR: Please enter a positive number!\n")
+                    continue
+                else:
+                    break
+            except ValueError:
+                print("ERROR: Please enter integers!\n")
+    try:
+        dpcmFix = loadedrun.dpcmFix
+    except AttributeError:
+        print("WARN: DCPM Fix Missing!")
+        while True:
+            dpcmFix = raw_input("Apply DPCM fix (y/n) [def=" + DEFAULTS[2] + "]? ")
+            if dpcmFix == "":
+                dpcmFix = DEFAULTS[2]
+            if dpcmFix.lower() == 'y':
+                dpcmFix = True
+                break
+            elif dpcmFix.lower() == 'n':
+                dpcmFix = False
+                break
+            print("ERROR: Please enter y for yes or n for no!\n")
+    try:
+        transitions = loadedrun.transitions
+    except AttributeError:
+        print("WARN: Transitions Missing!")
+        transitions = []
+    try:
+        isEverdrive = loadedrun.isEverdrive
+    except AttributeError:
+        print("WARN: Is Everdrive Run Missing!")
+        isEverdrive = False
+    
+    run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix, isEverdrive)
     # check for port conflicts
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
         print("ERROR: Requested ports already in use!")

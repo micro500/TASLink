@@ -653,6 +653,15 @@ class CLI(cmd.Cmd):
         self.do_on(data)
         print("The restart process is complete!")
 
+    def do_hard_restart(self, data):
+        """Turns the SNES console off, restarts the current run, and turns the SNES console on"""
+        self.do_off(data)
+        time.sleep(1)
+        self.do_reset(data)
+        time.sleep(1)
+        self.do_on(data)
+        print("The restart process is complete!")
+
     def do_modify_frames(self, data):
         """Modify the initial blank input frames"""
         # print options

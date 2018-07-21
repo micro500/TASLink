@@ -223,8 +223,9 @@ def load(filename):
     except AttributeError:
         print("WARN: Is Everdrive Run Missing!")
         isEverdrive = False
-    
+
     run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix, isEverdrive)
+    run.transitions = transitions
     # check for port conflicts
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
         print("ERROR: Requested ports already in use!")
@@ -264,6 +265,7 @@ class Transition(object):
     frameno = None
     window = None
     dpcmFix = None
+    trigReset = None
 
 class TASRun(object):
     def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix, is_everdrive):
@@ -919,13 +921,23 @@ class CLI(cmd.Cmd):
                 print("ERROR: Window is not a multiple of 0.25!\n")
             else:
                 break
+        # trigger reset
+        while True:
+            trigReset = raw_input("Reset Console (y/n)? ")
+            if trigReset.lower() == 'y':
+                trigReset = True
+                break
+            elif trigReset.lower() == 'n':
+                trigReset = False
+                break
         t = Transition()
         t.dpcmFix = dpcm_fix
         t.frameno = frameNum
         t.window = window
+        t.trigReset = trigReset
         runStatuses[selected_run].tasRun.addTransition(t)
         runStatuses[selected_run].isRunModified = True
-        
+
     def do_toggle_everdrive(self, data):
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
@@ -1148,6 +1160,14 @@ def handleTransition(run_index, transition):
         bytestring = "".join(byte)  # turn back into string
         ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))
         runStatuses[run_index].windowState = transition.window
+    try:
+        if transition.trigReset:
+            if TASLINK_CONNECTED:
+                ser.write("sd1")
+                time.sleep(0.2)
+                ser.write("sd0")
+    except AttributeError:
+        print("WARN: HANDLE MISSING RESET FLAG FOR TRANSITION")
 
 # ----- MAIN EXECUTION BEGINS HERE -----
 

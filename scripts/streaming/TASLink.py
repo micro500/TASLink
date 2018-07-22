@@ -891,6 +891,7 @@ class CLI(cmd.Cmd):
             print("ERROR: No run is selected!\n")
             return
         # transitions
+        print("NOTE: Reset Transitions need to be triggered 1 frame early")
         while True:
             try:
                 frameNum = readint("At what frame will this transition occur? ")

@@ -219,6 +219,11 @@ def load(filename):
         print("WARN: Transitions Missing!")
         transitions = []
     try:
+        blankFrames = loadedrun.blankFrames
+    except AttributeError:
+        print("WARN: Blank Frames Missing!")
+        blankFrames = []
+    try:
         isEverdrive = loadedrun.isEverdrive
     except AttributeError:
         print("WARN: Is Everdrive Run Missing!")
@@ -226,6 +231,7 @@ def load(filename):
 
     run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix, isEverdrive)
     run.transitions = transitions
+    run.blankFrames = blankFrames
     # check for port conflicts
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
         print("ERROR: Requested ports already in use!")
@@ -246,7 +252,8 @@ def load(filename):
     # add everdrive header if needed
     if run.isEverdrive == True:
         add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
-
+    if run.blankFrames != []:
+        load_blank_frames(selected_run)
     send_frames(selected_run, prebuffer)
 
     print("Run has been successfully loaded!")
@@ -280,6 +287,7 @@ class TASRun(object):
         self.dpcmFix = dpcm_fix
         self.transitions = []
         self.isEverdrive = is_everdrive
+        self.blankFrames = []
 
         self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
 
@@ -535,6 +543,29 @@ def add_everdrive_header(tasRun, runid):
         newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
     runStatuses[runid].inputBuffer = newbuffer
 
+def add_blank_frame(frameNum, runid):
+    run = runStatuses[runid].tasRun
+    working_string = runStatuses[runid].customCommand
+    max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif run.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        working_string += chr(0xFF)
+    runStatuses[runid].inputBuffer.insert(frameNum, working_string)
+
+def load_blank_frames(runid):
+    run = runStatuses[runid].tasRun
+    for x in range(len(run.blankFrames)):
+        frame = run.blankFrames[x]
+        if run.isEverdrive == True:
+            realframe = run.dummyFrames + EVERDRIVEFRAMES + frame
+        else:
+            realframe = run.dummyFrames + frame
+        add_blank_frame(realframe,runid)
+
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
@@ -715,6 +746,28 @@ class CLI(cmd.Cmd):
         runStatuses[index].isRunModified = True
 
         print("Run has been updated. Remember to save if you want this change to be permanent!")
+
+    def do_add_blank_frame(self, data):
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        print("Note this is automatically offset for dummy frame count and headers, it is not offset for other blank frames")
+        print("This Cannot be undone without reloading run, 0 to cancel")
+        while True:
+            try:
+                frameNum = readint("After what frame will this blank frame be inserted? ")
+                if frameNum < 0:
+                    print("ERROR: Please enter a positive number!\n")
+                    continue
+                elif frameNum == 0:
+                    return
+                else:
+                    break
+            except ValueError:
+                print("ERROR: Please enter an integer!\n")
+        runStatuses[selected_run].tasRun.blankFrames.append(frameNum)
+        runStatuses[selected_run].isRunModified = True
+        add_blank_frame(frameNum, selected_run)
 
     def do_reset(self, data):
         """Reset an active run back to frame 0"""
@@ -1234,6 +1287,9 @@ if TASLINK_CONNECTED:
             for transition in run.transitions:
                 if 0 <= (transition.frameno+run.dummyFrames+prebuffer) - runstatus.frameCount < latches: # we're about to pass the transition frame
                     handleTransition(run_index,transition)
+            for addedframe in run.blankFrames:
+                if 0 <= (addedframe+run.dummyFrames+prebuffer) - runstatus.frameCount < latches: # we're about to pass the addedframe frame
+                    print("Passing Added Blank frame at: " + str(addedframe))
 
             if latches > 0:
                 send_frames(run_index, latches)

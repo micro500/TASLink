@@ -42,6 +42,7 @@ supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 DEFAULTS = ["normal", 0, "n", 0, 0]
 
 EVERDRIVEFRAMES = 61 # Number of frames to offset dummy frames by when running on an everdrive
+SD2SNESFRAMES = 130 # Number of frames to offset dummy frames by when running on a SD2SNES
 
 TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
 
@@ -228,13 +229,23 @@ def load(filename):
     except AttributeError:
         print("WARN: Is Everdrive Run Missing!")
         isEverdrive = False
+    try:
+        isSD2SNES = loadedrun.isSD2SNES
+    except AttributeError:
+        print("WARN: Is SD2SNES Run Missing!")
+        isSD2SNES = False
 
-    run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix, isEverdrive)
+    run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix)
+    run.isEverdrive = isEverdrive
+    run.isSD2SNES = isSD2SNES
     run.transitions = transitions
     run.blankFrames = blankFrames
     # check for port conflicts
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
         print("ERROR: Requested ports already in use!")
+        return False
+    if run.isEverdrive == run.isSD2SNES == True:
+        print("ERROR: Run cannot be on both Everdrive and SD2SNES")
         return False
 
     rs = RunStatus()
@@ -251,7 +262,10 @@ def load(filename):
 
     # add everdrive header if needed
     if run.isEverdrive == True:
-        add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+        add_everdrive_header(selected_run)
+    # add SD2SNES header if needed
+    if run.isSD2SNES == True:
+        add_sd2snes_header(selected_run)
     if run.blankFrames != []:
         load_blank_frames(selected_run)
     send_frames(selected_run, prebuffer)
@@ -275,7 +289,7 @@ class Transition(object):
     trigReset = None
 
 class TASRun(object):
-    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix, is_everdrive):
+    def __init__(self, num_controllers, ports_list, controller_type, controller_bits, ovr, wndw, file_name, dummy_frames, dpcm_fix):
         self.numControllers = num_controllers
         self.portsList = ports_list
         self.controllerType = controller_type
@@ -286,7 +300,8 @@ class TASRun(object):
         self.dummyFrames = dummy_frames
         self.dpcmFix = dpcm_fix
         self.transitions = []
-        self.isEverdrive = is_everdrive
+        self.isEverdrive = False
+        self.isSD2SNES = False
         self.blankFrames = []
 
         self.fileExtension = file_name.split(".")[-1].strip()  # pythonic last element of a list/string/array
@@ -511,14 +526,15 @@ def releaseConsolePort(port, type):
             consoleLanes[lanes[port][0]] = 0
             consoleLanes[lanes[port][1]] = 0
 
-def remove_everdrive_header(tasRun, runid):
+def remove_everdrive_header(runid):
     print("Removing Everdrive Header!\n")
     newbuffer = runStatuses[runid].inputBuffer
     oldbuffer = newbuffer
     newbuffer = oldbuffer[EVERDRIVEFRAMES:]
     runStatuses[runid].inputBuffer = newbuffer
 
-def add_everdrive_header(tasRun, runid):
+def add_everdrive_header(runid):
+    tasRun = runStatuses[runid].tasRun
     print("Adding Everdrive Header!\n")
     newbuffer = runStatuses[runid].inputBuffer
     blankframe = runStatuses[runid].customCommand
@@ -543,6 +559,45 @@ def add_everdrive_header(tasRun, runid):
         newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
     runStatuses[runid].inputBuffer = newbuffer
 
+def remove_sd2snes_header(runid):
+    print("Removing SD2SNES Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    oldbuffer = newbuffer
+    newbuffer = oldbuffer[130:]
+    runStatuses[runid].inputBuffer = newbuffer
+
+def add_sd2snes_header(runid):
+    tasRun = runStatuses[runid].tasRun
+    print("Adding SD2SNES Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    blankframe = runStatuses[runid].customCommand
+    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif tasRun.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        blankframe += chr(0xFF)
+    startframe = runStatuses[runid].customCommand
+    for bytes in range(max):
+        if bytes == 0:
+            startframe += chr(0xEF) # press start on controller 1
+        else:
+            startframe += chr(0xFF)
+    aframe = runStatuses[runid].customCommand
+    for bytes in range(max):
+        if bytes == 1:
+            aframe += chr(0x7F) # press A on controller 1
+        else:
+            aframe += chr(0xFF)
+    newbuffer.insert(0, aframe) # add a frame pressing A to start of input buffer
+    for frame in range(0, 9):
+        newbuffer.insert(0, blankframe) # add 10 blank frames to start of input buffer
+    newbuffer.insert(0, startframe) #  add a frame pressing start to start of input buffer
+    for frame in range(0, 119):
+        newbuffer.insert(0, blankframe) # add 120 blank frames to start of input buffer
+    runStatuses[runid].inputBuffer = newbuffer
+
 def add_blank_frame(frameNum, runid):
     run = runStatuses[runid].tasRun
     working_string = runStatuses[runid].customCommand
@@ -562,6 +617,8 @@ def load_blank_frames(runid):
         frame = run.blankFrames[x]
         if run.isEverdrive == True:
             realframe = run.dummyFrames + EVERDRIVEFRAMES + frame
+        elif run.isSD2SNES == True:
+            realframe = run.dummyFrames + SD2SNESFRAMES + frame
         else:
             realframe = run.dummyFrames + frame
         add_blank_frame(realframe,runid)
@@ -735,11 +792,15 @@ class CLI(cmd.Cmd):
             for count in range(difference):
                 if run.isEverdrive:
                     runStatuses[index].inputBuffer.insert(EVERDRIVEFRAMES, working_string)
+                elif run.isSD2SNES:
+                    runStatuses[index].inputBuffer.insert(SD2SNESFRAMES, working_string)
                 else:
                     runStatuses[index].inputBuffer.insert(0, working_string)  # add the correct number of blank input frames
         elif difference < 0:  # remove input frames
             if run.isEverdrive:
                 runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[0:EVERDRIVEFRAMES]+runStatuses[index].inputBuffer[EVERDRIVEFRAMES-difference:]
+            elif run.isSD2SNES:
+                runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[0:SD2SNESFRAMES]+runStatuses[index].inputBuffer[SD2SNESFRAMES-difference:]
             else:
                 runStatuses[index].inputBuffer = runStatuses[index].inputBuffer[-difference:]
 
@@ -767,6 +828,10 @@ class CLI(cmd.Cmd):
                 print("ERROR: Please enter an integer!\n")
         runStatuses[selected_run].tasRun.blankFrames.append(frameNum)
         runStatuses[selected_run].isRunModified = True
+        if runStatuses[selected_run].tasRun.isEverdrive:
+            frameNum = frameNum + EVERDRIVEFRAMES
+        if runStatuses[selected_run].tasRun.isSD2SNES:
+            frameNum = frameNum + SD2SNESFRAMES
         add_blank_frame(frameNum, selected_run)
 
     def do_reset(self, data):
@@ -996,12 +1061,29 @@ class CLI(cmd.Cmd):
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return
+        if runStatuses[selected_run].tasRun.isSD2SNES == True:
+            print("ERROR: Run Cannot be on both Everdrive and SD2SNES!\n")
+            return
         if runStatuses[selected_run].tasRun.isEverdrive == True:
-            remove_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            remove_everdrive_header(selected_run)
             runStatuses[selected_run].tasRun.isEverdrive = False
         elif runStatuses[selected_run].tasRun.isEverdrive == False:
-            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
+            add_everdrive_header(selected_run)
             runStatuses[selected_run].tasRun.isEverdrive = True
+
+    def do_toggle_sd2snes(self, data):
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        if runStatuses[selected_run].tasRun.isEverdrive == True:
+            print("ERROR: Run Cannot be on both Everdrive and SD2SNES!\n")
+            return
+        if runStatuses[selected_run].tasRun.isSD2SNES == True:
+            remove_sd2snes_header(selected_run)
+            runStatuses[selected_run].tasRun.isSD2SNES = False
+        elif runStatuses[selected_run].tasRun.isSD2SNES == False:
+            add_sd2snes_header(selected_run)
+            runStatuses[selected_run].tasRun.isSD2SNES = True
 
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
@@ -1140,18 +1222,9 @@ class CLI(cmd.Cmd):
                     break
             except ValueError:
                 print("ERROR: Please enter integers!\n")
-        # is the run on a everdrive
-        while True:
-            is_everdrive = raw_input("Add a header for playback on an Everdrive (y/n)? ")
-            if is_everdrive.lower() == 'y':
-                is_everdrive = True
-                break
-            elif is_everdrive.lower() == 'n':
-                is_everdrive = False
-                break
-            print("ERROR: Please enter y for yes or n for no!\n")
+
         # create TASRun object and assign it to our global, defined above
-        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix, is_everdrive)
+        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
 
         rs = RunStatus()
         rs.customCommand = setupCommunication(tasrun)
@@ -1165,10 +1238,6 @@ class CLI(cmd.Cmd):
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1
-
-        # add everdrive header if needed
-        if tasrun.isEverdrive == True:
-            add_everdrive_header(runStatuses[selected_run].tasRun, selected_run)
 
         send_frames(selected_run, prebuffer)
 

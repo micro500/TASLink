@@ -392,6 +392,12 @@ class TASRun(object):
                 buffer[frameno+self.dummyFrames] = command_string
                 frameno += 1
 
+        # add empty frame to end of file to prevent desyncs on last frame
+        working_string = customCommand
+        for bytes in range(bytesPerCommand):
+            working_string += chr(0xFF)
+        buffer.append(working_string)
+
         return buffer
 
 

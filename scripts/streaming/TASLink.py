@@ -809,6 +809,7 @@ class CLI(cmd.Cmd):
         print("Run has been updated. Remember to save if you want this change to be permanent!")
 
     def do_add_blank_frame(self, data):
+        """Add a blank frame at a particular offset in the current run"""
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return
@@ -1004,7 +1005,7 @@ class CLI(cmd.Cmd):
         selected_run = runID - 1
 
     def do_add_transition(self, data):
-        """Adds a transition of communication settings at a particular frame"""
+        """Adds a transition of communication settings at a particular frame or Adds a Console Reset at a particular frame"""
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return
@@ -1058,6 +1059,8 @@ class CLI(cmd.Cmd):
         runStatuses[selected_run].isRunModified = True
 
     def do_toggle_everdrive(self, data):
+        """Adds a header of input to the start of the run to boot
+        the most recent rom on the NES Everdrive Cart"""
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return
@@ -1072,6 +1075,8 @@ class CLI(cmd.Cmd):
             runStatuses[selected_run].tasRun.isEverdrive = True
 
     def do_toggle_sd2snes(self, data):
+        """Adds a header of input to the start of the run to boot
+        the most recent rom on the SNES SD2SNES Cart"""
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return

@@ -726,6 +726,49 @@ class CLI(cmd.Cmd):
 
         print("Save complete!")
 
+    def do_execute(self, data):
+        """execute a sequence of commands from a file"""
+        if data == "":
+            while True:
+                file = raw_input("File (Blank to cancel): ")
+                if file == "":
+                    break
+                elif os.path.exists(file):
+                    break
+                else:
+                    print("Error: File does not exist!\n")
+                    continue
+        else:
+            file = data
+        if file == "":
+            return False
+        elif not os.path.exists(file):
+            print("Error: File does not exist!\n")
+            return False
+        scriptList = []
+        with open(file, 'r') as f:
+            for command in f:
+                command = command[:-1]
+                scriptList.append(command)
+        while True:
+            a = raw_input("[s]how, [r]un, [e]xit: ")
+            a = a.lower()
+            if a == "":
+                continue
+            elif a == "s":
+                print(scriptList)
+                continue
+            elif a == "e":
+                return False
+            elif a == "r":
+                print("Executing: " + file)
+                break
+            else:
+                continue
+        for command in scriptList:
+            self.onecmd(command)
+        return False
+
     def do_off(self, data):
         """Turns off the SNES via reset pin, if connected"""
         ser.write("sd1")

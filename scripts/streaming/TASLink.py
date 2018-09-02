@@ -904,6 +904,7 @@ class CLI(cmd.Cmd):
         print("Reset complete!")
 
     def do_reload(self, data):
+        """Reload selected run from file, need to have loaded from a file first"""
         if selected_run == -1:
             print("ERROR: No run is selected!\n")
             return

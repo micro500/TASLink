@@ -62,6 +62,7 @@ class RunStatus(object):
     windowState = None
     frameCount = 0
     defaultSave = None
+    isLoadedRun = False
 
 def readint(question):
     num = -1
@@ -256,6 +257,7 @@ def load(filename):
     rs.dpcmState = run.dpcmFix
     rs.windowState = run.window
     rs.defaultSave = filename # Default Save Name for loaded files is the file that was loaded
+    rs.isLoadedRun = True
     runStatuses.append(rs)
 
     selected_run = len(runStatuses) - 1
@@ -901,6 +903,19 @@ class CLI(cmd.Cmd):
         t.window = runStatuses[index].tasRun.window
         handleTransition(index, t)
         print("Reset complete!")
+
+    def do_reload(self, data):
+        """Reload selected run from file, need to have loaded from a file first"""
+        if selected_run == -1:
+            print("ERROR: No run is selected!\n")
+            return
+        if not runStatuses[selected_run].isLoadedRun:
+            print("ERROR: Run wasn't loaded from file!\n")
+            return
+        fileToLoad = runStatuses[selected_run].defaultSave
+        self.onecmd("remove")
+        self.onecmd("load " + fileToLoad)
+        return False
 
     def do_remove(self, data):
         """Remove one of the current runs."""

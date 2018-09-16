@@ -65,15 +65,28 @@ class RunStatus(object):
     isLoadedRun = False
 
 # types implemented int,str,float,bool
-def get_input(type, prompt, default=''):
+# constraints only work on int and float
+def get_input(type, prompt, default='', constraints={}):
     while True:
         try:
             data = input(prompt)
             if data == default == None:
-                print('No Default Configured')
+                print('ERROR: No Default Configured')
                 continue
             if data == '' and default != '':
                 return default
+            if 'min' in constraints:
+                if data < constraints['min']:
+                    print('ERROR: Input less than Minimium of ' + str(constraints['min']))
+                    continue
+            if 'max' in constraints:
+                if data > constraints['max']:
+                    print('ERROR: Input greater than maximum of ' + str(constraints['max']))
+                    continue
+            if 'interval' in constraints:
+                if data % constraints['interval'] != 0:
+                    print('ERROR: Input does not match interval of ' + str(constraints['max']))
+                    continue
             if type == 'int':
                 try:
                     return int(data)
@@ -90,12 +103,67 @@ def get_input(type, prompt, default=''):
                 except ValueError:
                     print('ERROR: Expected string')
             if type == 'bool':
-                if data.lower() in (1,'true','y','yes')
+                if data.lower() in (1,'true','y','yes'):
                     return True
-                elif data.lower() in (0,'false','n','no')
+                elif data.lower() in (0,'false','n','no'):
+                    return False
+                else:
+                    print('ERROR: Expected boolean')
         except EOFError:
             print('EOF')
             return None
 
-    ### MAIN LOOP ###
-    signal.signal(signal.SIGINT,signal.SIG_IGN) # Catch Ctrl+C from interupting the mainloop
+def getNextMask():
+    for index,letter in enumerate(MASKS):
+        if masksInUse[index] == 0:
+            masksInUse[index] = 1
+            return letter
+    return 'Z'
+
+def freeMask(letter):
+    val = ord(letter)
+    if not (65 <= val <= 68):
+        return False
+    masksInUse[val-65] = 0
+    return True
+
+def load(filename, batch=False):
+    global selected_run
+    with open(filename, 'r') as f:
+        loadedrun = yaml.load(f)
+    # check for missing values from run
+    missingValues = 0
+    try:
+        numControllers = loadedrun.numControllers
+        portsList = loadedrun.portsList
+        controllerType = loadedrun.controllerType
+        controllerBits = loadedrun.controllerBits
+        inputFile = loadedrun.inputFile
+    except AttributeError as error:
+            print("ERROR: Missing Attribute from loaded run!")
+            print(error)
+            return False
+    try:
+        overread = loadedrun.overread
+    except AttributeError:
+        missingValues += 1
+        overread = get_input(type = 'int',
+            prompt = 'Overread value (0 or 1) [def=' + str(DEFAULTS['overread']) + ']? ',
+            default = DEFAULTS['overread'],
+            constraints = {'min': 0, 'max': 1})
+        if overread == None:
+            return False
+    try:
+        window = loadedrun.window
+    except AttributeError as error:
+        missingValues += 1
+        window = get_input(type = 'float',
+            prompt = 'Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=' + str(DEFAULTS['windowmode']) + ']? ',
+            default = DEFAULTS['windowmode'],
+            constraints = {'min': 0, 'max': 15.75, 'interval': 0.25})
+        
+        
+        
+        
+### MAIN LOOP ###
+# signal.signal(signal.SIGINT,signal.SIG_IGN) # Catch Ctrl+C from interupting the mainloop

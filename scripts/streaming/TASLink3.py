@@ -243,8 +243,8 @@ def send_frames(index, amount):
     framecount = runStatuses[index].frameCount
 
     if TASLINK_CONNECTED == 1:
-        string = ''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)])
-        ser.write(bytes(string, 'utf-8'))
+        string = b''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)])
+        ser.write(string)
     else:
         print("DATA SENT: ", ''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)]))
 
@@ -268,7 +268,7 @@ def setupCommunication(tasrun):
             portData += 128 # add the flag for the 8th bit
         if TASLINK_CONNECTED:
             string = command + chr(portData)
-            ser.write(bytes(string, 'utf-8'))
+            ser.write(string.encode('latin-1'))
         else:
             print(command, portData)
 
@@ -299,7 +299,7 @@ def setupCommunication(tasrun):
             bytestring = "".join(byte)  # convert binary to string
             if TASLINK_CONNECTED:
                 string = command + chr(int(bytestring, 2))
-                ser.write(bytes(string, 'utf-8'))  # send the sc command
+                ser.write(string.encode('latin-1'))  # send the sc command
             else:
                 print(command, bytestring)
 
@@ -313,7 +313,7 @@ def setupCommunication(tasrun):
     command += customCommand
     if TASLINK_CONNECTED:
         string = command + chr(int(controllerMask, 2))
-        ser.write(bytes(string, 'utf-8'))  # send the sA/sB/sC/sD command
+        ser.write(string.encode('latin-1'))  # send the sA/sB/sC/sD command
     else:
         print(command, controllerMask)
 
@@ -326,18 +326,18 @@ def setupCommunication(tasrun):
     bytestring = "".join(byte)  # turn back into string
     if TASLINK_CONNECTED:
         string = command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2))
-        ser.write(bytes(string, 'utf-8'))  # send the sA/sB/sC/sD command
+        ser.write(string.encode('latin-1'))  # send the sA/sB/sC/sD command
     else:
         print(command, bytestring, controllerMask)
 
     # finally, clear lanes and get ready to rock
     if TASLINK_CONNECTED:
         string = "r" + chr(int(controllerMask, 2))
-        ser.write(bytes(string, 'utf-8'))
+        ser.write(string.encode('latin-1'))
     else:
         print("r", controllerMask)
 
-    return customCommand
+    return customCommand.encode('latin-1')
 
 def isConsolePortAvailable(port, type):
     # port check
@@ -445,12 +445,12 @@ def add_sd2snes_header(runid):
             aframe += chr(0x7F) # press A on controller 1
         else:
             aframe += chr(0xFF)
-    newbuffer.insert(0, aframe) # add a frame pressing A to start of input buffer
+    newbuffer.insert(0, aframe.encode('latin-1')) # add a frame pressing A to start of input buffer
     for frame in range(0, 9):
-        newbuffer.insert(0, blankframe) # add 10 blank frames to start of input buffer
+        newbuffer.insert(0, blankframe.encode('latin-1')) # add 10 blank frames to start of input buffer
     newbuffer.insert(0, startframe) #  add a frame pressing start to start of input buffer
     for frame in range(0, 119):
-        newbuffer.insert(0, blankframe) # add 120 blank frames to start of input buffer
+        newbuffer.insert(0, blankframe.encode('latin-1')) # add 120 blank frames to start of input buffer
     runStatuses[runid].inputBuffer = newbuffer
 
 def add_blank_frame(frameNum, runid):
@@ -463,7 +463,7 @@ def add_blank_frame(frameNum, runid):
     elif run.controllerType == CONTROLLER_MULTITAP:
         max *= 4
     for bytes in range(max):
-        working_string += chr(0xFF)
+        working_string += chr(0xFF).encode('latin-1')
     runStatuses[runid].inputBuffer.insert(frameNum, working_string)
 def load_blank_frames(runid):
     run = runStatuses[runid].tasRun
@@ -487,7 +487,7 @@ def handleTransition(run_index, transition):
             if transition.dpcmFix:
                 portData += 128  # add the flag for the 8th bit
             string = command + chr(portData)
-            ser.write(bytes(string, 'utf-8'))
+            ser.write(string.encode('latin-1'))
             runStatuses[run_index].dpcmState = transition.dpcmFix
     if runStatuses[run_index].windowState != transition.window:
         controllers = list('00000000')
@@ -510,14 +510,14 @@ def handleTransition(run_index, transition):
         byte[0] = '1'  # enable flag
         bytestring = "".join(byte)  # turn back into string
         string = command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2))
-        ser.write(bytes(string, 'utf-8'))
+        ser.write(string.encode('latin-1'))
         runStatuses[run_index].windowState = transition.window
     try:
         if transition.trigReset:
             if TASLINK_CONNECTED:
-                ser.write(b"sd1")
+                ser.write("sd1".encode('latin-1'))
                 time.sleep(0.2)
-                ser.write(b"sd0")
+                ser.write("sd0".encode('latin-1'))
     except AttributeError:
         # print("WARN: HANDLE MISSING RESET FLAG FOR TRANSITION")
         pass
@@ -594,7 +594,7 @@ class TASRun(object):
         for frame in range(self.dummyFrames):
             working_string = customCommand
             for bytes in range(bytesPerCommand):
-                working_string += chr(0xFF)
+                working_string += chr(0xFF).encode('latin-1')
             buffer[frame] = working_string
 
         frameno = 0
@@ -605,7 +605,7 @@ class TASRun(object):
 #            print(type(b),type(chr(c)))
 #            invertedfile[index] = chr(c) # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
 #            invertedfile[index] = chr(c).encode('ascii', 'ignore') # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
-            invertedfile[index] = chr(~b & 0xFF).encode('ascii', errors='replace').decode("utf-8")
+            invertedfile[index] = chr(~b & 0xFF).encode('latin-1')
 
         if self.fileExtension == 'r08':
             while True:
@@ -616,7 +616,7 @@ class TASRun(object):
                 if len(one_frame) != 2:  # fail case
                     break
 
-                working_string += ''.join(one_frame)
+                working_string += ''.join(one_frame).encode('latin-1')
 
                 # combine the appropriate parts of working_string
                 command_string = working_string[0]
@@ -636,18 +636,18 @@ class TASRun(object):
                 if len(one_frame) != 16:  # fail case
                     break
 
-                working_string += ''.join(one_frame)
+                working_string += b''.join(one_frame)
 
                 # combine the appropriate parts of working_string
-                command_string = working_string[0]
+                command_string = chr(working_string[0])
                 for counter in range(self.numControllers):
                     if self.controllerType == CONTROLLER_Y:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5].decode('latin-1')  # math magic
                     elif self.controllerType == CONTROLLER_MULTITAP:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9].decode('latin-1')  # math magic
                     else:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
-                buffer[frameno+self.dummyFrames] = command_string
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3].decode('latin-1')  # math magic
+                buffer[frameno+self.dummyFrames] = command_string.encode('latin-1')
                 frameno += 1
 
         return buffer
@@ -798,12 +798,12 @@ class CLI(cmd.Cmd):
 
     def do_off(self, data):
         """Turns off the SNES via reset pin, if connected"""
-        ser.write(b"sd1")
+        ser.write("sd1".encode('latin-1'))
         print("Console off.")
 
     def do_on(self, data):
         """Turns on the SNES via reset pin, if connected"""
-        ser.write(b"sd0")
+        ser.write("sd0".encode('latin-1'))
         print("Console on.")
 
     def do_restart(self, data):
@@ -916,7 +916,7 @@ class CLI(cmd.Cmd):
 
         if data.lower() == 'all':
             if TASLINK_CONNECTED:
-                ser.write(b"R")
+                ser.write("R".encode('latin-1'))
             else:
                 print("R")
             for index in range(len(runStatuses)):
@@ -962,7 +962,7 @@ class CLI(cmd.Cmd):
 
         if TASLINK_CONNECTED:
             string = "r" + chr(int(controllerMask, 2))
-            ser.write(bytes(string, 'utf-8'))  # clear the buffer
+            ser.write(string.encode('latin-1'))  # clear the buffer
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
@@ -1033,7 +1033,7 @@ class CLI(cmd.Cmd):
        # clear the lanes
         if TASLINK_CONNECTED:
             string = "r" + chr(int(controllerMask, 2))
-            ser.write(bytes(string, 'utf-8'))  # clear the buffer
+            ser.write(string.encode('latin-1'))  # clear the buffer
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
@@ -1321,7 +1321,8 @@ if TASLINK_CONNECTED:
 
     # ensure we start with all events disabled
     for x in range(1,5):
-        ser.write(bytes("se"+str(x)+chr(0)+chr(0), 'utf-8'))
+        string = "se"+str(x)+chr(0)+chr(0)
+        ser.write(string.encode('latin-1'))
 
 if len(sys.argv) > 2:  # load some initial files!
     for filename in sys.argv[2:]:

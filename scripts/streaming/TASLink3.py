@@ -236,7 +236,7 @@ def load(filename, batch=False):
     send_frames(selected_run, prebuffer)
 
     if missingValues != 0:
-        print('Run was missing ' + missingValues + 'settings resave suggested.')
+        print('Run was missing ' + str(missingValues) + ' setting(s) resave suggested.')
     print('Run has been successfully loaded!')
 
 def send_frames(index, amount):
@@ -600,8 +600,12 @@ class TASRun(object):
         frameno = 0
         invertedfile = [""] * len(wholefile)
         for index, b in enumerate(wholefile):
-            print(b)
-            invertedfile[index] = chr(~ord(b) & 0xFF)  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+#            c = 255 - b
+#            print(b, chr(c))
+#            print(type(b),type(chr(c)))
+#            invertedfile[index] = chr(c) # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+#            invertedfile[index] = chr(c).encode('ascii', 'ignore') # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+            invertedfile[index] = chr(~b & 0xFF).encode('ascii', errors='replace').decode("utf-8")
 
         if self.fileExtension == 'r08':
             while True:
@@ -745,6 +749,9 @@ class CLI(cmd.Cmd):
         runStatuses[runID - 1].isRunModified = False
 
         print("Save complete!")
+
+    def do_debug(self, data):
+        print(str(runStatuses[selected_run].inputBuffer[:-20]).encode('utf-8'))
 
     def do_execute(self, data):
         """execute a sequence of commands from a file"""
@@ -1356,7 +1363,7 @@ if TASLINK_CONNECTED:
             c += ser.read(numBytes)
             if numBytes > 60:
                 print ("WARNING: High frame read detected: " + str(numBytes))
-        latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
+        latchCounts = [-1, c.count(b'f'), c.count(b'g'), c.count(b'h'), c.count(b'i')]
 
         for run_index, runstatus in enumerate(runStatuses):
             run = runstatus.tasRun

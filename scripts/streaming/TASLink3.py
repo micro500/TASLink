@@ -100,7 +100,7 @@ def get_input(type, prompt, default='', constraints={}):
                 else:
                     print('ERROR: Expected boolean')
         except EOFError:
-            print('EOF')
+            # print('EOF')
             return None
 
 def getNextMask():
@@ -750,8 +750,9 @@ class CLI(cmd.Cmd):
 
         print("Save complete!")
 
-    def do_debug(self, data):
-        print(str(runStatuses[selected_run].inputBuffer[:-20]).encode('utf-8'))
+#    def do_debug(self, data):
+#        """Debug command for testing input buffer"""
+#        print(str(runStatuses[selected_run].inputBuffer[:-20]).encode('utf-8'))
 
     def do_execute(self, data):
         """execute a sequence of commands from a file"""

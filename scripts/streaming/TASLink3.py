@@ -65,6 +65,10 @@ def get_input(type, prompt, default='', constraints={}):
                 continue
             if data == '' and default != '':
                 return default
+            if type == 'int':
+                data = int(data)
+            if type == 'float':
+                data = float(data)
             if 'min' in constraints:
                 if data < constraints['min']:
                     print('ERROR: Input less than Minimium of ' + str(constraints['min']))
@@ -401,15 +405,15 @@ def add_everdrive_header(runid):
     elif tasRun.controllerType == CONTROLLER_MULTITAP:
         max *= 4
     for bytes in range(max):
-        blankframe += chr(0xFF)
+        blankframe += chr(0xFF).encode('latin-1')
     startframe = runStatuses[runid].customCommand
     max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
     # next we take controller type into account
     for bytes in range(max):
         if bytes == 0:
-            startframe += chr(0xEF) # press start on controller 1
+            startframe += chr(0xEF).encode('latin-1') # press start on controller 1
         else:
-            startframe += chr(0xFF)
+            startframe += chr(0xFF).encode('latin-1')
     newbuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
     for frame in range(0, EVERDRIVEFRAMES-1):
         newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
@@ -432,25 +436,25 @@ def add_sd2snes_header(runid):
     elif tasRun.controllerType == CONTROLLER_MULTITAP:
         max *= 4
     for bytes in range(max):
-        blankframe += chr(0xFF)
+        blankframe += chr(0xFF).encode('latin-1')
     startframe = runStatuses[runid].customCommand
     for bytes in range(max):
         if bytes == 0:
-            startframe += chr(0xEF) # press start on controller 1
+            startframe += chr(0xEF).encode('latin-1') # press start on controller 1
         else:
-            startframe += chr(0xFF)
+            startframe += chr(0xFF).encode('latin-1')
     aframe = runStatuses[runid].customCommand
     for bytes in range(max):
         if bytes == 1:
-            aframe += chr(0x7F) # press A on controller 1
+            aframe += chr(0x7F).encode('latin-1') # press A on controller 1
         else:
-            aframe += chr(0xFF)
-    newbuffer.insert(0, aframe.encode('latin-1')) # add a frame pressing A to start of input buffer
+            aframe += chr(0xFF).encode('latin-1')
+    newbuffer.insert(0, aframe) # add a frame pressing A to start of input buffer
     for frame in range(0, 9):
-        newbuffer.insert(0, blankframe.encode('latin-1')) # add 10 blank frames to start of input buffer
+        newbuffer.insert(0, blankframe) # add 10 blank frames to start of input buffer
     newbuffer.insert(0, startframe) #  add a frame pressing start to start of input buffer
     for frame in range(0, 119):
-        newbuffer.insert(0, blankframe.encode('latin-1')) # add 120 blank frames to start of input buffer
+        newbuffer.insert(0, blankframe) # add 120 blank frames to start of input buffer
     runStatuses[runid].inputBuffer = newbuffer
 
 def add_blank_frame(frameNum, runid):
@@ -872,7 +876,7 @@ class CLI(cmd.Cmd):
             elif run.controllerType == CONTROLLER_MULTITAP:
                 max *= 4
             for bytes in range(max):
-                working_string += chr(0xFF)
+                working_string += chr(0xFF).encode('latin-1')
 
             for count in range(difference):
                 if run.isEverdrive:
@@ -905,7 +909,7 @@ class CLI(cmd.Cmd):
                 frameNum = get_input(type = 'int',
                     prompt = 'After what frame will this blank frame be inserted? ',
                     constraints = {'min': 0})
-                elif frameNum == None:
+                if frameNum == None:
                     return False
                 else:
                     break

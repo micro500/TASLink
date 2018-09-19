@@ -708,12 +708,15 @@ class CLI(cmd.Cmd):
             modified = runstatus.isRunModified
             if modified:
                 while True:
-                    save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ")
+                    save = get_input(type = 'str',
+                        prompt = 'Run #'+str(index+1)+' is not saved. Save (y/n)? ')
                     if save == 'y':
                         self.do_save(index+1)
                         break
                     elif save == 'n':
                         break
+                    elif save == None:
+                        return False
                     else:
                         print("ERROR: Could not interpret response.")
 
@@ -739,9 +742,12 @@ class CLI(cmd.Cmd):
         else:
             runID = selected_run + 1
 
-        filename = raw_input("Please enter filename [def=" + runStatuses[runID - 1].defaultSave + "]: ")
+        filename = get_input(type = 'str',
+            prompt = 'Please enter filename [def=' + runStatuses[runID - 1].defaultSave + ']: ')
         if filename == "":
             filename = runStatuses[runID - 1].defaultSave
+        if filename == None:
+            return False
 
         with open(filename, 'w') as f:
             f.write(yaml.dump(runStatuses[runID - 1].tasRun))
@@ -758,7 +764,8 @@ class CLI(cmd.Cmd):
         """execute a sequence of commands from a file"""
         if data == "":
             while True:
-                file = raw_input("File (Blank to cancel): ")
+                file = get_input(type = 'str',
+                    prompt = 'File (Blank/Ctrl+D to cancel): ')
                 if file == "":
                     break
                 elif os.path.exists(file):
@@ -779,7 +786,8 @@ class CLI(cmd.Cmd):
                 command = command[:-1]
                 scriptList.append(command)
         while True:
-            a = raw_input("[s]how, [r]un, [e]xit: ")
+            a = get_input(type = 'str',
+                    prompt = '[s]how, [r]un, [e]xit: ')
             a = a.lower()
             if a == "":
                 continue
@@ -847,7 +855,11 @@ class CLI(cmd.Cmd):
         index = runID - 1
         run = runStatuses[index].tasRun
         print("The current number of initial blank frames is : " + str(run.dummyFrames))
-        frames = readint("How many initial blank frames do you want? ")
+        frames = get_input(type = 'int',
+            prompt = 'How many initial blank frames do you want? ',
+            constraints = {'min': 0})
+        if frames == None:
+            return False
         difference = frames - run.dummyFrames  # positive means we're adding frames, negative means we're removing frames
         run.dummyFrames = frames
         # modify input buffer accordingly
@@ -890,12 +902,11 @@ class CLI(cmd.Cmd):
         print("This Cannot be undone without reloading run, 0 to cancel")
         while True:
             try:
-                frameNum = readint("After what frame will this blank frame be inserted? ")
-                if frameNum < 0:
-                    print("ERROR: Please enter a positive number!\n")
-                    continue
-                elif frameNum == 0:
-                    return
+                frameNum = get_input(type = 'int',
+                    prompt = 'After what frame will this blank frame be inserted? ',
+                    constraints = {'min': 0})
+                elif frameNum == None:
+                    return False
                 else:
                     break
             except ValueError:
@@ -1088,9 +1099,12 @@ class CLI(cmd.Cmd):
                 return False
         else:
             while True:
-                runID = readint("Which run # do you want to select? ")
+                runID = get_input(type = 'int',
+                    prompt = 'Which run # do you want to select? ') 
                 if 0 < runID <= len(runStatuses):  # confirm valid run number
                     break
+                elif runID == None:
+                    return False
                 else:
                     print("ERROR: Invalid run number!")
         selected_run = runID - 1

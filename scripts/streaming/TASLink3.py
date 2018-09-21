@@ -246,6 +246,13 @@ def load(filename, batch=False):
 def send_frames(index, amount):
     framecount = runStatuses[index].frameCount
 
+    # Report on end of run
+    if not runStatuses[index].runOver:
+        totalframes = len(runStatuses[index].inputBuffer)
+        if framecount >= totalframes:
+            runStatuses[index].runOver = True
+            print('Playback of ' + runStatuses[index].tasRun.inputFile + ' finished')
+
     if TASLINK_CONNECTED == 1:
         string = b''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)])
         ser.write(string)
@@ -538,6 +545,7 @@ class RunStatus(object):
     frameCount = 0
     defaultSave = None
     isLoadedRun = False
+    runOver = False
 
 class Transition(object):
     frameno = None
@@ -937,6 +945,7 @@ class CLI(cmd.Cmd):
                 print("R")
             for index in range(len(runStatuses)):
                 runStatuses[index].frameCount = 0
+                runStatuses[index].runOver = False
                 send_frames(index, prebuffer)  # re-pre-buffer-!
                 # return runs to their original state
                 t = Transition()
@@ -983,6 +992,7 @@ class CLI(cmd.Cmd):
             print("r" + controllerMask, 2)  # clear the buffer
 
         runStatuses[index].frameCount = 0
+        runStatuses[index].runOver = False
         send_frames(index, prebuffer)  # re-pre-buffer-!
         # return run to its original state
         t = Transition()

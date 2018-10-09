@@ -620,7 +620,7 @@ class TASRun(object):
                 if len(one_frame) != 2:  # fail case
                     break
 
-                working_string += ''.join(one_frame).encode('latin-1')
+                working_string += ''.join(one_frame)
 
                 # combine the appropriate parts of working_string
                 command_string = working_string[0]
@@ -628,8 +628,8 @@ class TASRun(object):
                     if self.controllerType == CONTROLLER_FOUR_SCORE:
                         pass # what is a four score?  would probably require a new file format in fact....
                     else: # normal controller
-                        command_string += working_string[counter+1:counter+2]  # math not-so-magic
-                buffer[frameno+self.dummyFrames] = command_string
+                        command_string += working_string[counter+1:counter+2].decode('latin-1')  # math not-so-magic
+                buffer[frameno+self.dummyFrames] = command_string.encode('latin-1')
                 frameno += 1
         elif self.fileExtension == 'r16m':
             while True:

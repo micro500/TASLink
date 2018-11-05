@@ -620,10 +620,10 @@ class TASRun(object):
                 if len(one_frame) != 2:  # fail case
                     break
 
-                working_string += ''.join(one_frame)
+                working_string += b''.join(one_frame)
 
                 # combine the appropriate parts of working_string
-                command_string = working_string[0]
+                command_string = chr(working_string[0])
                 for counter in range(self.numControllers):
                     if self.controllerType == CONTROLLER_FOUR_SCORE:
                         pass # what is a four score?  would probably require a new file format in fact....

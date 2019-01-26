@@ -1,31 +1,32 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
+# ImportModules
 import os
-import serial
-from serial import SerialException
 import sys
 import cmd
 import threading
 import yaml
 import gc
 import time
-# import math
-
-import rlcompleter, readline  # to add support for tab completion of commands
+import rlcompleter
+import readline
 import glob
+import signal # Handle InteruptSignals
+import serial
+from serial import SerialException
 
+# GarbageCollection
 gc.disable() # for performance reasons
 
+# Readline Config
 def complete(text, state):
     return (glob.glob(text + '*') + [None])[state]
-
 def complete_nostate(text, *ignored):
     return glob.glob(text + '*') + [None]
-
 readline.set_completer_delims(' \t\n')
-readline.parse_and_bind("tab: complete")
+readline.parse_and_bind('tab: complete')
 readline.set_completer(complete)
 
-# important constants
+# Set Constants
 lanes = [[-1], [1, 2, 5, 6], [3, 4, 7, 8], [5, 6], [7, 8]]
 MASKS = 'ABCD'
 CONTROLLER_NORMAL = 0  # 1 controller
@@ -35,81 +36,83 @@ CONTROLLER_FOUR_SCORE = 3  #: four-score [nes-only peripheral that we don't do a
 baud = 2000000
 prebuffer = 60
 ser = None
-supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
-
-# Default Options for new runs
-# 'Controller Type', 'Overread', 'DPCM Fix', 'Window Mode', 'Dummy Frames'
-DEFAULTS = ["normal", 0, "n", 0, 0]
-
 EVERDRIVEFRAMES = 61 # Number of frames to offset dummy frames by when running on an everdrive
 SD2SNESFRAMES = 130 # Number of frames to offset dummy frames by when running on a SD2SNES
-
-TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
-
 # important global variables to keep track of
 consolePorts = [2, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 consoleLanes = [2, 0, 0, 0, 0, 0, 0, 0, 0]  # 1 when in use, 0 when available. 2 is used to waste cell 0
 masksInUse = [0, 0, 0, 0]
 runStatuses = [] # list of currently active runs and their statuses
 selected_run = -1
+TASLINK_CONNECTED = 1  # set to 0 for development without TASLink plugged in, set to 1 for actual testing
+supportedExtensions = ['r08','r16m'] # TODO: finish implementing this
 
-class RunStatus(object):
-    tasRun = None
-    inputBuffer = None
-    customCommand = None
-    isRunModified = None
-    dpcmState = None
-    windowState = None
-    frameCount = 0
-    defaultSave = None
-    isLoadedRun = False
+# Default Options for new runs
+DEFAULTS = {'contype': 'normal',
+            'overread': 0,
+            'dpcmfix': 'False',
+            'windowmode': 0,
+            'dummyframes': 0}
 
-def readint(question):
-    num = -1
+# types implemented int,str,float,bool
+# constraints only work on int and float
+def get_input(type, prompt, default='', constraints={}):
     while True:
-        ans = raw_input(question)
         try:
-            num = int(ans)
-        except ValueError:
-            print("ERROR: Expected integer, but integer not found")
-            continue
-        break
-    return num
-
-def checkint(value):
-    try:
-        out = int(value)
-    except ValueError:
-        print("ERROR: Expected integer, but integer not found")
-        return False
-    return True
-
-def readfloat(question):
-    num = -1
-    while True:
-        ans = raw_input(question)
-        try:
-            num = float(ans)
-        except ValueError:
-            print("ERROR: Expected float, but float not found")
-            continue
-        break
-    return num
-
-def checkfloat(value):
-    try:
-        out = float(value)
-    except ValueError:
-        print("ERROR: Expected float, but float not found")
-        return False
-    return True
+            data = input(prompt)
+            if data == default == None:
+                print('ERROR: No Default Configured')
+                continue
+            if data == '' and default != '':
+                return default
+            if type == 'int':
+                data = int(data)
+            if type == 'float':
+                data = float(data)
+            if 'min' in constraints:
+                if data < constraints['min']:
+                    print('ERROR: Input less than Minimium of ' + str(constraints['min']))
+                    continue
+            if 'max' in constraints:
+                if data > constraints['max']:
+                    print('ERROR: Input greater than maximum of ' + str(constraints['max']))
+                    continue
+            if 'interval' in constraints:
+                if data % constraints['interval'] != 0:
+                    print('ERROR: Input does not match interval of ' + str(constraints['max']))
+                    continue
+            if type == 'int':
+                try:
+                    return int(data)
+                except ValueError:
+                    print('ERROR: Expected integer')
+            if type == 'float':
+                try:
+                    return float(data)
+                except ValueError:
+                    print('ERROR: Expected float')
+            if type == 'str':
+                try:
+                    return str(data)
+                except ValueError:
+                    print('ERROR: Expected string')
+            if type == 'bool':
+                if data.lower() in (1,'true','y','yes'):
+                    return True
+                elif data.lower() in (0,'false','n','no'):
+                    return False
+                else:
+                    print('ERROR: Expected boolean')
+        except EOFError:
+            # print('EOF')
+            return None
 
 def getNextMask():
     for index,letter in enumerate(MASKS):
         if masksInUse[index] == 0:
             masksInUse[index] = 1
             return letter
-    return 'Z'
+    return b'Z'
 
 def freeMask(letter):
     val = ord(letter)
@@ -118,124 +121,86 @@ def freeMask(letter):
     masksInUse[val-65] = 0
     return True
 
-
-def load(filename):
+def load(filename, batch=False):
     global selected_run
-
     with open(filename, 'r') as f:
         loadedrun = yaml.load(f)
     # check for missing values from run
+    missingValues = 0
     try:
         numControllers = loadedrun.numControllers
         portsList = loadedrun.portsList
-    except AttributeError:
-        print("ERROR: Missing Controller Count or Port Assignment!")
-        return False
-    try:
         controllerType = loadedrun.controllerType
         controllerBits = loadedrun.controllerBits
-    except AttributeError:
-        print("ERROR: Missing Controller Type!")
-        return False
+        inputFile = loadedrun.inputFile
+    except AttributeError as error:
+            print('ERROR: Missing Attribute from loaded run!')
+            print(error)
+            return False
     try:
         overread = loadedrun.overread
     except AttributeError:
-        print("WARN: Overread Missing!")
-        while True:
-            overread = raw_input("Overread value (0 or 1... if unsure choose 0) [def=" + str(DEFAULTS[1]) + "]? ")
-            if overread == "":
-                overread = DEFAULTS[1]
-            if checkint(overread):
-                overread = int(overread)
-            else:
-                continue
-            if overread != 0 and overread != 1:
-                print("ERROR: Overread be either 0 or 1!\n")
-                continue
-            else:
-                break
+        missingValues += 1
+        overread = get_input(type = 'int',
+            prompt = 'Overread value (0 or 1) [def=' + str(DEFAULTS['overread']) + ']? ',
+            default = DEFAULTS['overread'],
+            constraints = {'min': 0, 'max': 1})
+        if overread == None:
+            return False
     try:
         window = loadedrun.window
     except AttributeError:
-        print("WARN: Window Missing!")
-        while True:
-            window = raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=" + str(DEFAULTS[3]) + "]? ")
-            if window == "":
-                window = DEFAULTS[3]
-            if checkfloat(window):
-                window = float(window)
-            else:
-                continue
-            if window < 0 or window > 15.25:
-                print("ERROR: Window out of range [0, 15.75])!\n")
-            elif window % 0.25 != 0:
-                print("ERROR: Window is not a multiple of 0.25!\n")
-            else:
-                break
-    try:
-        inputFile = loadedrun.inputFile
-        if not os.path.isfile(inputFile):
-            print("ERROR: Input File is Missing!")
+        missingValues += 1
+        window = get_input(type = 'float',
+            prompt = 'Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=' + str(DEFAULTS['windowmode']) + ']? ',
+            default = DEFAULTS['windowmode'],
+            constraints = {'min': 0, 'max': 15.75, 'interval': 0.25})
+        if window == None:
             return False
-    except AttributeError:
-        print("ERROR: No Input File") # Uhh ???
+    if not os.path.isfile(inputFile):
+        print('ERROR: Input File is Missing!')
         return False
     try:
         dummyFrames = loadedrun.dummyFrames
     except AttributeError:
-        print("WARN: Dummy Frame Count Missing!")
-        while True:
-            try:
-                dummyFrames = raw_input("Number of blank input frames to prepend [def=" + str(DEFAULTS[4]) + "]? ")
-                if dummyFrames == "":
-                    dummyFrames = DEFAULTS[4]
-                if checkint(dummyFrames):
-                    dummyFrames = int(dummyFrames)
-                else:
-                    continue
-                if dummyFrames < 0:
-                    print("ERROR: Please enter a positive number!\n")
-                    continue
-                else:
-                    break
-            except ValueError:
-                print("ERROR: Please enter integers!\n")
+        missingValues += 1
+        dummyFrames = get_input(type = 'int',
+            prompt = 'Number of blank input frames to prepend [def=' + str(DEFAULTS['dummyframes']) + ']? ',
+            default = DEFAULTS['dummyframes'],
+            constraints = {'min': 0})
+        if dummyFrames == None:
+            return False
     try:
         dpcmFix = loadedrun.dpcmFix
     except AttributeError:
-        print("WARN: DCPM Fix Missing!")
-        while True:
-            dpcmFix = raw_input("Apply DPCM fix (y/n) [def=" + DEFAULTS[2] + "]? ")
-            if dpcmFix == "":
-                dpcmFix = DEFAULTS[2]
-            if dpcmFix.lower() == 'y':
-                dpcmFix = True
-                break
-            elif dpcmFix.lower() == 'n':
-                dpcmFix = False
-                break
-            print("ERROR: Please enter y for yes or n for no!\n")
+        missingValues += 1
+        dpcmFix = get_input(type = 'bool',
+            prompt = 'Apply DPCM fix (y/n) [def=' + str(DEFAULTS['dpcmfix']) + ']? ',
+            default = DEFAULTS['dpcmfix'])
+        if dpcmFix == None:
+            return False
     try:
         transitions = loadedrun.transitions
     except AttributeError:
-        print("WARN: Transitions Missing!")
+        missingValues += 1
         transitions = []
     try:
         blankFrames = loadedrun.blankFrames
     except AttributeError:
-        print("WARN: Blank Frames Missing!")
+        missingValues += 1
         blankFrames = []
     try:
         isEverdrive = loadedrun.isEverdrive
     except AttributeError:
-        print("WARN: Is Everdrive Run Missing!")
+        missingValues += 1
         isEverdrive = False
     try:
         isSD2SNES = loadedrun.isSD2SNES
     except AttributeError:
-        print("WARN: Is SD2SNES Run Missing!")
+        missingValues += 1
         isSD2SNES = False
 
+    # Create New TASRun Object
     run = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, inputFile, dummyFrames, dpcmFix)
     run.isEverdrive = isEverdrive
     run.isSD2SNES = isSD2SNES
@@ -243,12 +208,13 @@ def load(filename):
     run.blankFrames = blankFrames
     # check for port conflicts
     if not all(isConsolePortAvailable(port, run.controllerType) for port in run.portsList):
-        print("ERROR: Requested ports already in use!")
+        print('ERROR: Requested ports already in use!')
         return False
     if run.isEverdrive == run.isSD2SNES == True:
-        print("ERROR: Run cannot be on both Everdrive and SD2SNES")
+        print('ERROR: Run cannot be on both Everdrive and SD2SNES')
         return False
 
+    # Create RunStatus Object
     rs = RunStatus()
     rs.customCommand = setupCommunication(run)
     rs.inputBuffer = run.getInputBuffer(rs.customCommand)
@@ -260,29 +226,326 @@ def load(filename):
     rs.isLoadedRun = True
     runStatuses.append(rs)
 
+    # Select New Run
     selected_run = len(runStatuses) - 1
-
     # add everdrive header if needed
     if run.isEverdrive == True:
         add_everdrive_header(selected_run)
     # add SD2SNES header if needed
     if run.isSD2SNES == True:
         add_sd2snes_header(selected_run)
+    # add blank frames
     if run.blankFrames != []:
         load_blank_frames(selected_run)
     send_frames(selected_run, prebuffer)
 
-    print("Run has been successfully loaded!")
+    if missingValues != 0:
+        print('Run was missing ' + str(missingValues) + ' setting(s) resave suggested.')
+    print('Run has been successfully loaded!')
 
 def send_frames(index, amount):
     framecount = runStatuses[index].frameCount
 
+    # Report on end of run
+    if not runStatuses[index].runOver:
+        totalframes = len(runStatuses[index].inputBuffer)
+        if framecount >= totalframes:
+            runStatuses[index].runOver = True
+            print('Playback of ' + runStatuses[index].tasRun.inputFile + ' finished')
+
     if TASLINK_CONNECTED == 1:
-        ser.write(''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)]))
+        string = b''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)])
+        ser.write(string)
     else:
         print("DATA SENT: ", ''.join(runStatuses[index].inputBuffer[framecount:(framecount + amount)]))
 
     runStatuses[index].frameCount += amount
+
+def setupCommunication(tasrun):
+    print("Now preparing TASLink....")
+    # claim the ports / lanes
+    for port in tasrun.portsList:
+        claimConsolePort(port, tasrun.controllerType)
+
+    # begin serial communication
+    controllers = list('00000000')
+    # set controller lanes and ports
+    for port in tasrun.portsList:
+        # enable the console ports
+        command = "sp"
+        command += str(port)  # should look like 'sp1' now
+        portData = tasrun.controllerType
+        if tasrun.dpcmFix:
+            portData += 128 # add the flag for the 8th bit
+        if TASLINK_CONNECTED:
+            string = command + chr(portData)
+            ser.write(string.encode('latin-1'))
+        else:
+            print(command, portData)
+
+        # enable the controllers lines
+        if tasrun.controllerType == CONTROLLER_NORMAL:
+            limit = 1
+        elif tasrun.controllerType == CONTROLLER_MULTITAP:
+            limit = 4
+        else:
+            limit = 2
+        for counter in range(limit):
+            command = "sc" + str(lanes[port][counter])  # should look like 'sc1' now
+            controllers[8 - lanes[port][counter]] = '1'  # this is used later for the custom stream command
+            # now we need to set the byte data accordingly
+            byte = list('00000000')
+            byte[0] = '1'  # first set it plugged in
+            byte[1] = str(tasrun.overread)  # next set overread value
+            # set controller size
+            if tasrun.controllerBits == 8:
+                pass  # both bytes should be 0, so we're good
+            elif tasrun.controllerBits == 16:
+                byte[7] = '1'
+            elif tasrun.controllerBits == 24:
+                byte[6] = '1'
+            elif tasrun.controllerBits == 32:
+                byte[6] = '1'
+                byte[7] = '1'
+            bytestring = "".join(byte)  # convert binary to string
+            if TASLINK_CONNECTED:
+                string = command + chr(int(bytestring, 2))
+                ser.write(string.encode('latin-1'))  # send the sc command
+            else:
+                print(command, bytestring)
+
+    # setup custom stream command
+    command = 's'
+    customCommand = getNextMask()
+    if customCommand == 'Z':
+        print("ERROR: all four custom streams are full!")
+        # TODO: handle gracefully
+    controllerMask = "".join(controllers)  # convert binary to string
+    command += customCommand
+    if TASLINK_CONNECTED:
+        string = command + chr(int(controllerMask, 2))
+        ser.write(string.encode('latin-1'))  # send the sA/sB/sC/sD command
+    else:
+        print(command, controllerMask)
+
+    # setup events #s e lane_num byte controllerMask
+    command = 'se' + str(min(tasrun.portsList))
+    # do first byte
+    byte = list(
+        '{0:08b}'.format(int(tasrun.window / 0.25)))  # create padded bytestring, convert to list for manipulation
+    byte[0] = '1'  # enable flag
+    bytestring = "".join(byte)  # turn back into string
+    if TASLINK_CONNECTED:
+        string = command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2))
+        ser.write(string.encode('latin-1'))  # send the sA/sB/sC/sD command
+    else:
+        print(command, bytestring, controllerMask)
+
+    # finally, clear lanes and get ready to rock
+    if TASLINK_CONNECTED:
+        string = "r" + chr(int(controllerMask, 2))
+        ser.write(string.encode('latin-1'))
+    else:
+        print("r", controllerMask)
+
+    return customCommand.encode('latin-1')
+
+def isConsolePortAvailable(port, type):
+    # port check
+    if consolePorts[port] != 0:  # if port is disabled or in use
+        return False
+
+    # lane check
+    if type == CONTROLLER_NORMAL:
+        if consoleLanes[lanes[port][0]]:
+            return False
+    elif type == CONTROLLER_MULTITAP:
+        if port != 1 and port != 2:  # multitap only works on ports 1 and 2
+            return False
+        if any(consoleLanes[lanes[port][x]] for x in range(4)):
+            return False
+    else:  # y-cable or four-score
+        if any(consoleLanes[lanes[port][x]] for x in range(2)):
+            return False
+
+    return True  # passed all checks
+
+def claimConsolePort(port, type):
+    if consolePorts[port] == 0:
+        consolePorts[port] = 1  # claim it
+        if type == CONTROLLER_NORMAL:
+            consoleLanes[lanes[port][0]] = 1
+        elif type == CONTROLLER_MULTITAP:
+            for lane in lanes[port]:
+                consoleLanes[lane] = 1
+        else:
+            consoleLanes[lanes[port][0]] = 1
+            consoleLanes[lanes[port][1]] = 1
+
+def releaseConsolePort(port, type):
+    if consolePorts[port] == 1:
+        consolePorts[port] = 0
+        if type == CONTROLLER_NORMAL:
+            consoleLanes[lanes[port][0]] = 0
+        elif type == CONTROLLER_MULTITAP:
+            for lane in lanes[port]:
+                consoleLanes[lane] = 0
+        else:
+            consoleLanes[lanes[port][0]] = 0
+            consoleLanes[lanes[port][1]] = 0
+
+def remove_everdrive_header(runid):
+    print("Removing Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    oldbuffer = newbuffer
+    newbuffer = oldbuffer[EVERDRIVEFRAMES:]
+    runStatuses[runid].inputBuffer = newbuffer
+def add_everdrive_header(runid):
+    tasRun = runStatuses[runid].tasRun
+    print("Adding Everdrive Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    blankframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif tasRun.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        blankframe += chr(0xFF).encode('latin-1')
+    startframe = runStatuses[runid].customCommand
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    for bytes in range(max):
+        if bytes == 0:
+            startframe += chr(0xEF).encode('latin-1') # press start on controller 1
+        else:
+            startframe += chr(0xFF).encode('latin-1')
+    newbuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
+    for frame in range(0, EVERDRIVEFRAMES-1):
+        newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
+    runStatuses[runid].inputBuffer = newbuffer
+
+def remove_sd2snes_header(runid):
+    print("Removing SD2SNES Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    oldbuffer = newbuffer
+    newbuffer = oldbuffer[130:]
+    runStatuses[runid].inputBuffer = newbuffer
+def add_sd2snes_header(runid):
+    tasRun = runStatuses[runid].tasRun
+    print("Adding SD2SNES Header!\n")
+    newbuffer = runStatuses[runid].inputBuffer
+    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
+    blankframe = runStatuses[runid].customCommand
+    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif tasRun.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        blankframe += chr(0xFF).encode('latin-1')
+    startframe = runStatuses[runid].customCommand
+    for bytes in range(max):
+        if bytes == 0:
+            startframe += chr(0xEF).encode('latin-1') # press start on controller 1
+        else:
+            startframe += chr(0xFF).encode('latin-1')
+    aframe = runStatuses[runid].customCommand
+    for bytes in range(max):
+        if bytes == 1:
+            aframe += chr(0x7F).encode('latin-1') # press A on controller 1
+        else:
+            aframe += chr(0xFF).encode('latin-1')
+    newbuffer.insert(0, aframe) # add a frame pressing A to start of input buffer
+    for frame in range(0, 9):
+        newbuffer.insert(0, blankframe) # add 10 blank frames to start of input buffer
+    newbuffer.insert(0, startframe) #  add a frame pressing start to start of input buffer
+    for frame in range(0, 119):
+        newbuffer.insert(0, blankframe) # add 120 blank frames to start of input buffer
+    runStatuses[runid].inputBuffer = newbuffer
+
+def add_blank_frame(frameNum, runid):
+    run = runStatuses[runid].tasRun
+    working_string = runStatuses[runid].customCommand
+    max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
+    # next we take controller type into account
+    if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
+        max *= 2
+    elif run.controllerType == CONTROLLER_MULTITAP:
+        max *= 4
+    for bytes in range(max):
+        working_string += chr(0xFF).encode('latin-1')
+    runStatuses[runid].inputBuffer.insert(frameNum, working_string)
+def load_blank_frames(runid):
+    run = runStatuses[runid].tasRun
+    for x in range(len(run.blankFrames)):
+        frame = run.blankFrames[x]
+        if run.isEverdrive == True:
+            realframe = run.dummyFrames + EVERDRIVEFRAMES + frame
+        elif run.isSD2SNES == True:
+            realframe = run.dummyFrames + SD2SNESFRAMES + frame
+        else:
+            realframe = run.dummyFrames + frame
+        add_blank_frame(realframe,runid)
+
+def handleTransition(run_index, transition):
+    if runStatuses[run_index].dpcmState != transition.dpcmFix:
+        for port in runStatuses[run_index].tasRun.portsList:
+            # enable the console ports
+            command = "sp"
+            command += str(port)  # should look like 'sp1' now
+            portData = runStatuses[run_index].tasRun.controllerType
+            if transition.dpcmFix:
+                portData += 128  # add the flag for the 8th bit
+            string = command + chr(portData)
+            ser.write(string.encode('latin-1'))
+            runStatuses[run_index].dpcmState = transition.dpcmFix
+    if runStatuses[run_index].windowState != transition.window:
+        controllers = list('00000000')
+        for port in runStatuses[run_index].tasRun.portsList:
+            if runStatuses[run_index].tasRun.controllerType == CONTROLLER_NORMAL:
+                limit = 1
+            elif runStatuses[run_index].tasRun.controllerType == CONTROLLER_MULTITAP:
+                limit = 4
+            else:
+                limit = 2
+            for counter in range(limit):
+                controllers[8 - lanes[port][counter]] = '1'  # this is used later for the custom stream command
+        controllerMask = "".join(controllers)  # convert binary to string
+
+        # setup events #s e lane_num byte controllerMask
+        command = 'se' + str(min(runStatuses[run_index].tasRun.portsList))
+        # do first byte
+        byte = list('{0:08b}'.format(
+            int(transition.window / 0.25)))  # create padded bytestring, convert to list for manipulation
+        byte[0] = '1'  # enable flag
+        bytestring = "".join(byte)  # turn back into string
+        string = command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2))
+        ser.write(string.encode('latin-1'))
+        runStatuses[run_index].windowState = transition.window
+    try:
+        if transition.trigReset:
+            if TASLINK_CONNECTED:
+                ser.write("sd1".encode('latin-1'))
+                time.sleep(0.2)
+                ser.write("sd0".encode('latin-1'))
+    except AttributeError:
+        # print("WARN: HANDLE MISSING RESET FLAG FOR TRANSITION")
+        pass
+
+### CUSTOM CLASSES ###
+
+class RunStatus(object):
+    tasRun = None
+    inputBuffer = None
+    customCommand = None
+    isRunModified = None
+    dpcmState = None
+    windowState = None
+    frameCount = 0
+    defaultSave = None
+    isLoadedRun = False
+    runOver = False
 
 class Transition(object):
     frameno = None
@@ -343,13 +606,18 @@ class TASRun(object):
         for frame in range(self.dummyFrames):
             working_string = customCommand
             for bytes in range(bytesPerCommand):
-                working_string += chr(0xFF)
+                working_string += chr(0xFF).encode('latin-1')
             buffer[frame] = working_string
 
         frameno = 0
         invertedfile = [""] * len(wholefile)
         for index, b in enumerate(wholefile):
-            invertedfile[index] = chr(~ord(b) & 0xFF)  # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+#            c = 255 - b
+#            print(b, chr(c))
+#            print(type(b),type(chr(c)))
+#            invertedfile[index] = chr(c) # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+#            invertedfile[index] = chr(c).encode('ascii', 'ignore') # flip our 1's and 0's to be hardware compliant; mask just to make sure its a byte
+            invertedfile[index] = chr(~b & 0xFF).encode('latin-1')
 
         if self.fileExtension == 'r08':
             while True:
@@ -360,16 +628,16 @@ class TASRun(object):
                 if len(one_frame) != 2:  # fail case
                     break
 
-                working_string += ''.join(one_frame)
+                working_string += b''.join(one_frame)
 
                 # combine the appropriate parts of working_string
-                command_string = working_string[0]
+                command_string = chr(working_string[0])
                 for counter in range(self.numControllers):
                     if self.controllerType == CONTROLLER_FOUR_SCORE:
                         pass # what is a four score?  would probably require a new file format in fact....
                     else: # normal controller
-                        command_string += working_string[counter+1:counter+2]  # math not-so-magic
-                buffer[frameno+self.dummyFrames] = command_string
+                        command_string += working_string[counter+1:counter+2].decode('latin-1')  # math not-so-magic
+                buffer[frameno+self.dummyFrames] = command_string.encode('latin-1')
                 frameno += 1
         elif self.fileExtension == 'r16m':
             while True:
@@ -380,260 +648,31 @@ class TASRun(object):
                 if len(one_frame) != 16:  # fail case
                     break
 
-                working_string += ''.join(one_frame)
+                working_string += b''.join(one_frame)
 
                 # combine the appropriate parts of working_string
-                command_string = working_string[0]
+                command_string = chr(working_string[0])
                 for counter in range(self.numControllers):
                     if self.controllerType == CONTROLLER_Y:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5]  # math magic
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 5].decode('latin-1')  # math magic
                     elif self.controllerType == CONTROLLER_MULTITAP:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9]  # math magic
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 9].decode('latin-1')  # math magic
                     else:
-                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3]  # math magic
-                buffer[frameno+self.dummyFrames] = command_string
+                        command_string += working_string[(counter * 8) + 1:(counter * 8) + 3].decode('latin-1')  # math magic
+                buffer[frameno+self.dummyFrames] = command_string.encode('latin-1')
                 frameno += 1
-
-        # add empty frame to end of file to prevent desyncs on last frame
-        working_string = customCommand
-        for bytes in range(bytesPerCommand):
-            working_string += chr(0xFF)
-        buffer.append(working_string)
 
         return buffer
 
-
-def setupCommunication(tasrun):
-    print("Now preparing TASLink....")
-    # claim the ports / lanes
-    for port in tasrun.portsList:
-        claimConsolePort(port, tasrun.controllerType)
-
-    # begin serial communication
-    controllers = list('00000000')
-    # set controller lanes and ports
-    for port in tasrun.portsList:
-        # enable the console ports
-        command = "sp"
-        command += str(port)  # should look like 'sp1' now
-        portData = tasrun.controllerType
-        if tasrun.dpcmFix:
-            portData += 128 # add the flag for the 8th bit
-        if TASLINK_CONNECTED:
-            ser.write(command + chr(portData))
-        else:
-            print(command, portData)
-
-        # enable the controllers lines
-        if tasrun.controllerType == CONTROLLER_NORMAL:
-            limit = 1
-        elif tasrun.controllerType == CONTROLLER_MULTITAP:
-            limit = 4
-        else:
-            limit = 2
-        for counter in range(limit):
-            command = "sc" + str(lanes[port][counter])  # should look like 'sc1' now
-            controllers[8 - lanes[port][counter]] = '1'  # this is used later for the custom stream command
-            # now we need to set the byte data accordingly
-            byte = list('00000000')
-            byte[0] = '1'  # first set it plugged in
-            byte[1] = str(tasrun.overread)  # next set overread value
-            # set controller size
-            if tasrun.controllerBits == 8:
-                pass  # both bytes should be 0, so we're good
-            elif tasrun.controllerBits == 16:
-                byte[7] = '1'
-            elif tasrun.controllerBits == 24:
-                byte[6] = '1'
-            elif tasrun.controllerBits == 32:
-                byte[6] = '1'
-                byte[7] = '1'
-            bytestring = "".join(byte)  # convert binary to string
-            if TASLINK_CONNECTED:
-                ser.write(command + chr(int(bytestring, 2)))  # send the sc command
-            else:
-                print(command, bytestring)
-
-    # setup custom stream command
-    command = 's'
-    customCommand = getNextMask()
-    if customCommand == 'Z':
-        print("ERROR: all four custom streams are full!")
-        # TODO: handle gracefully
-    controllerMask = "".join(controllers)  # convert binary to string
-    command += customCommand
-    if TASLINK_CONNECTED:
-        ser.write(command + chr(int(controllerMask, 2)))  # send the sA/sB/sC/sD command
-    else:
-        print(command, controllerMask)
-
-    # setup events #s e lane_num byte controllerMask
-    command = 'se' + str(min(tasrun.portsList))
-    # do first byte
-    byte = list(
-        '{0:08b}'.format(int(tasrun.window / 0.25)))  # create padded bytestring, convert to list for manipulation
-    byte[0] = '1'  # enable flag
-    bytestring = "".join(byte)  # turn back into string
-    if TASLINK_CONNECTED:
-        ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))  # send the sA/sB/sC/sD command
-    else:
-        print(command, bytestring, controllerMask)
-
-    # finally, clear lanes and get ready to rock
-    if TASLINK_CONNECTED:
-        ser.write("r" + chr(int(controllerMask, 2)))
-    else:
-        print("r", controllerMask)
-
-    return customCommand
-
-
-def isConsolePortAvailable(port, type):
-    # port check
-    if consolePorts[port] != 0:  # if port is disabled or in use
-        return False
-
-    # lane check
-    if type == CONTROLLER_NORMAL:
-        if consoleLanes[lanes[port][0]]:
-            return False
-    elif type == CONTROLLER_MULTITAP:
-        if port != 1 and port != 2:  # multitap only works on ports 1 and 2
-            return False
-        if any(consoleLanes[lanes[port][x]] for x in range(4)):
-            return False
-    else:  # y-cable or four-score
-        if any(consoleLanes[lanes[port][x]] for x in range(2)):
-            return False
-
-    return True  # passed all checks
-
-
-def claimConsolePort(port, type):
-    if consolePorts[port] == 0:
-        consolePorts[port] = 1  # claim it
-        if type == CONTROLLER_NORMAL:
-            consoleLanes[lanes[port][0]] = 1
-        elif type == CONTROLLER_MULTITAP:
-            for lane in lanes[port]:
-                consoleLanes[lane] = 1
-        else:
-            consoleLanes[lanes[port][0]] = 1
-            consoleLanes[lanes[port][1]] = 1
-
-
-def releaseConsolePort(port, type):
-    if consolePorts[port] == 1:
-        consolePorts[port] = 0
-        if type == CONTROLLER_NORMAL:
-            consoleLanes[lanes[port][0]] = 0
-        elif type == CONTROLLER_MULTITAP:
-            for lane in lanes[port]:
-                consoleLanes[lane] = 0
-        else:
-            consoleLanes[lanes[port][0]] = 0
-            consoleLanes[lanes[port][1]] = 0
-
-def remove_everdrive_header(runid):
-    print("Removing Everdrive Header!\n")
-    newbuffer = runStatuses[runid].inputBuffer
-    oldbuffer = newbuffer
-    newbuffer = oldbuffer[EVERDRIVEFRAMES:]
-    runStatuses[runid].inputBuffer = newbuffer
-
-def add_everdrive_header(runid):
-    tasRun = runStatuses[runid].tasRun
-    print("Adding Everdrive Header!\n")
-    newbuffer = runStatuses[runid].inputBuffer
-    blankframe = runStatuses[runid].customCommand
-    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
-    # next we take controller type into account
-    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
-        max *= 2
-    elif tasRun.controllerType == CONTROLLER_MULTITAP:
-        max *= 4
-    for bytes in range(max):
-        blankframe += chr(0xFF)
-    startframe = runStatuses[runid].customCommand
-    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
-    # next we take controller type into account
-    for bytes in range(max):
-        if bytes == 0:
-            startframe += chr(0xEF) # press start on controller 1
-        else:
-            startframe += chr(0xFF)
-    newbuffer.insert(0, startframe) # add a frame pressing start to start of input buffer
-    for frame in range(0, EVERDRIVEFRAMES-1):
-        newbuffer.insert(0, blankframe) # add x number of blank frames to start of input buffer
-    runStatuses[runid].inputBuffer = newbuffer
-
-def remove_sd2snes_header(runid):
-    print("Removing SD2SNES Header!\n")
-    newbuffer = runStatuses[runid].inputBuffer
-    oldbuffer = newbuffer
-    newbuffer = oldbuffer[130:]
-    runStatuses[runid].inputBuffer = newbuffer
-
-def add_sd2snes_header(runid):
-    tasRun = runStatuses[runid].tasRun
-    print("Adding SD2SNES Header!\n")
-    newbuffer = runStatuses[runid].inputBuffer
-    max = int(tasRun.controllerBits / 8) * tasRun.numControllers  # bytes * number of controllers
-    blankframe = runStatuses[runid].customCommand
-    if tasRun.controllerType == CONTROLLER_Y or tasRun.controllerType == CONTROLLER_FOUR_SCORE:
-        max *= 2
-    elif tasRun.controllerType == CONTROLLER_MULTITAP:
-        max *= 4
-    for bytes in range(max):
-        blankframe += chr(0xFF)
-    startframe = runStatuses[runid].customCommand
-    for bytes in range(max):
-        if bytes == 0:
-            startframe += chr(0xEF) # press start on controller 1
-        else:
-            startframe += chr(0xFF)
-    aframe = runStatuses[runid].customCommand
-    for bytes in range(max):
-        if bytes == 1:
-            aframe += chr(0x7F) # press A on controller 1
-        else:
-            aframe += chr(0xFF)
-    newbuffer.insert(0, aframe) # add a frame pressing A to start of input buffer
-    for frame in range(0, 9):
-        newbuffer.insert(0, blankframe) # add 10 blank frames to start of input buffer
-    newbuffer.insert(0, startframe) #  add a frame pressing start to start of input buffer
-    for frame in range(0, 119):
-        newbuffer.insert(0, blankframe) # add 120 blank frames to start of input buffer
-    runStatuses[runid].inputBuffer = newbuffer
-
-def add_blank_frame(frameNum, runid):
-    run = runStatuses[runid].tasRun
-    working_string = runStatuses[runid].customCommand
-    max = int(run.controllerBits / 8) * run.numControllers  # bytes * number of controllers
-    # next we take controller type into account
-    if run.controllerType == CONTROLLER_Y or run.controllerType == CONTROLLER_FOUR_SCORE:
-        max *= 2
-    elif run.controllerType == CONTROLLER_MULTITAP:
-        max *= 4
-    for bytes in range(max):
-        working_string += chr(0xFF)
-    runStatuses[runid].inputBuffer.insert(frameNum, working_string)
-
-def load_blank_frames(runid):
-    run = runStatuses[runid].tasRun
-    for x in range(len(run.blankFrames)):
-        frame = run.blankFrames[x]
-        if run.isEverdrive == True:
-            realframe = run.dummyFrames + EVERDRIVEFRAMES + frame
-        elif run.isSD2SNES == True:
-            realframe = run.dummyFrames + SD2SNESFRAMES + frame
-        else:
-            realframe = run.dummyFrames + frame
-        add_blank_frame(realframe,runid)
+### CUSTOM CMD CLASS ###
 
 # return false exits the function
 # return true exits the whole CLI
 class CLI(cmd.Cmd):
+    def __init__(self):
+        cmd.Cmd.__init__(self)
+        self.setprompt()
+        self.intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
 
     def setprompt(self):
         if selected_run == -1:
@@ -646,16 +685,8 @@ class CLI(cmd.Cmd):
                 self.prompt = "TASLink[#" + str(selected_run + 1) + "][" + str(
                     runStatuses[selected_run].tasRun.dummyFrames) + "f]> "
 
-    def __init__(self):
-        cmd.Cmd.__init__(self)
-
-        self.setprompt()
-
-        self.intro = "\nWelcome to the TASLink command-line interface!\nType 'help' for a list of commands.\n"
-
     def postcmd(self, stop, line):
         self.setprompt()
-
         return stop
 
     def complete(self, text, state):
@@ -665,7 +696,6 @@ class CLI(cmd.Cmd):
             stripped = len(origline) - len(line)
             begidx = readline.get_begidx() - stripped
             endidx = readline.get_endidx() - stripped
-
             compfunc = self.custom_comp_func
             self.completion_matches = compfunc(text, line, begidx, endidx)
         try:
@@ -690,12 +720,15 @@ class CLI(cmd.Cmd):
             modified = runstatus.isRunModified
             if modified:
                 while True:
-                    save = raw_input("Run #"+str(index+1)+" is not saved. Save (y/n)? ")
+                    save = get_input(type = 'str',
+                        prompt = 'Run #'+str(index+1)+' is not saved. Save (y/n)? ')
                     if save == 'y':
                         self.do_save(index+1)
                         break
                     elif save == 'n':
                         break
+                    elif save == None:
+                        return False
                     else:
                         print("ERROR: Could not interpret response.")
 
@@ -721,9 +754,12 @@ class CLI(cmd.Cmd):
         else:
             runID = selected_run + 1
 
-        filename = raw_input("Please enter filename [def=" + runStatuses[runID - 1].defaultSave + "]: ")
+        filename = get_input(type = 'str',
+            prompt = 'Please enter filename [def=' + runStatuses[runID - 1].defaultSave + ']: ')
         if filename == "":
             filename = runStatuses[runID - 1].defaultSave
+        if filename == None:
+            return False
 
         with open(filename, 'w') as f:
             f.write(yaml.dump(runStatuses[runID - 1].tasRun))
@@ -732,11 +768,16 @@ class CLI(cmd.Cmd):
 
         print("Save complete!")
 
+#    def do_debug(self, data):
+#        """Debug command for testing input buffer"""
+#        print(str(runStatuses[selected_run].inputBuffer[:-20]).encode('utf-8'))
+
     def do_execute(self, data):
         """execute a sequence of commands from a file"""
         if data == "":
             while True:
-                file = raw_input("File (Blank to cancel): ")
+                file = get_input(type = 'str',
+                    prompt = 'File (Blank/Ctrl+D to cancel): ')
                 if file == "":
                     break
                 elif os.path.exists(file):
@@ -757,7 +798,8 @@ class CLI(cmd.Cmd):
                 command = command[:-1]
                 scriptList.append(command)
         while True:
-            a = raw_input("[s]how, [r]un, [e]xit: ")
+            a = get_input(type = 'str',
+                    prompt = '[s]how, [r]un, [e]xit: ')
             a = a.lower()
             if a == "":
                 continue
@@ -777,12 +819,12 @@ class CLI(cmd.Cmd):
 
     def do_off(self, data):
         """Turns off the SNES via reset pin, if connected"""
-        ser.write("sd1")
+        ser.write("sd1".encode('latin-1'))
         print("Console off.")
 
     def do_on(self, data):
         """Turns on the SNES via reset pin, if connected"""
-        ser.write("sd0")
+        ser.write("sd0".encode('latin-1'))
         print("Console on.")
 
     def do_restart(self, data):
@@ -825,7 +867,11 @@ class CLI(cmd.Cmd):
         index = runID - 1
         run = runStatuses[index].tasRun
         print("The current number of initial blank frames is : " + str(run.dummyFrames))
-        frames = readint("How many initial blank frames do you want? ")
+        frames = get_input(type = 'int',
+            prompt = 'How many initial blank frames do you want? ',
+            constraints = {'min': 0})
+        if frames == None:
+            return False
         difference = frames - run.dummyFrames  # positive means we're adding frames, negative means we're removing frames
         run.dummyFrames = frames
         # modify input buffer accordingly
@@ -838,7 +884,7 @@ class CLI(cmd.Cmd):
             elif run.controllerType == CONTROLLER_MULTITAP:
                 max *= 4
             for bytes in range(max):
-                working_string += chr(0xFF)
+                working_string += chr(0xFF).encode('latin-1')
 
             for count in range(difference):
                 if run.isEverdrive:
@@ -868,12 +914,11 @@ class CLI(cmd.Cmd):
         print("This Cannot be undone without reloading run, 0 to cancel")
         while True:
             try:
-                frameNum = readint("After what frame will this blank frame be inserted? ")
-                if frameNum < 0:
-                    print("ERROR: Please enter a positive number!\n")
-                    continue
-                elif frameNum == 0:
-                    return
+                frameNum = get_input(type = 'int',
+                    prompt = 'After what frame will this blank frame be inserted? ',
+                    constraints = {'min': 0})
+                if frameNum == None:
+                    return False
                 else:
                     break
             except ValueError:
@@ -895,11 +940,12 @@ class CLI(cmd.Cmd):
 
         if data.lower() == 'all':
             if TASLINK_CONNECTED:
-                ser.write("R")
+                ser.write("R".encode('latin-1'))
             else:
                 print("R")
             for index in range(len(runStatuses)):
                 runStatuses[index].frameCount = 0
+                runStatuses[index].runOver = False
                 send_frames(index, prebuffer)  # re-pre-buffer-!
                 # return runs to their original state
                 t = Transition()
@@ -940,11 +986,13 @@ class CLI(cmd.Cmd):
         controllerMask = "".join(controllers)  # convert binary to string
 
         if TASLINK_CONNECTED:
-            ser.write("r" + chr(int(controllerMask, 2)))  # clear the buffer
+            string = "r" + chr(int(controllerMask, 2))
+            ser.write(string.encode('latin-1'))  # clear the buffer
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
         runStatuses[index].frameCount = 0
+        runStatuses[index].runOver = False
         send_frames(index, prebuffer)  # re-pre-buffer-!
         # return run to its original state
         t = Transition()
@@ -1010,7 +1058,8 @@ class CLI(cmd.Cmd):
 
        # clear the lanes
         if TASLINK_CONNECTED:
-            ser.write("r" + chr(int(controllerMask, 2)))  # clear the buffer
+            string = "r" + chr(int(controllerMask, 2))
+            ser.write(string.encode('latin-1'))  # clear the buffer
         else:
             print("r" + controllerMask, 2)  # clear the buffer
 
@@ -1021,13 +1070,16 @@ class CLI(cmd.Cmd):
     def do_load(self, data):
         """Load a run from a file"""
         if data == "":
-            filename = raw_input("Please enter the file to load: ")
+            fileName = get_input(type = 'str',
+                prompt = 'What is the input file (path to filename) ? ')
+            if fileName == None:
+                return False
         else:
-            filename = data
-        if not os.path.isfile(filename):
+            fileName = data
+        if not os.path.isfile(fileName):
             print("ERROR: File does not exist!")
             return False
-        load(filename)
+        load(fileName)
 
     def do_list(self, data):
         """List all active runs"""
@@ -1061,9 +1113,12 @@ class CLI(cmd.Cmd):
                 return False
         else:
             while True:
-                runID = readint("Which run # do you want to select? ")
+                runID = get_input(type = 'int',
+                    prompt = 'Which run # do you want to select? ') 
                 if 0 < runID <= len(runStatuses):  # confirm valid run number
                     break
+                elif runID == None:
+                    return False
                 else:
                     print("ERROR: Invalid run number!")
         selected_run = runID - 1
@@ -1075,45 +1130,25 @@ class CLI(cmd.Cmd):
             return
         # transitions
         print("NOTE: Reset Transitions need to be triggered 1 frame early")
-        while True:
-            try:
-                frameNum = readint("At what frame will this transition occur? ")
-                if frameNum <= 0:
-                    print("ERROR: Please enter a positive number!\n")
-                    continue
-                else:
-                    break
-            except ValueError:
-                print("ERROR: Please enter an integer!\n")
-        # DPCM fix
-        while True:
-            dpcm_fix = raw_input("Apply DPCM fix (y/n)? ")
-            if dpcm_fix.lower() == 'y':
-                dpcm_fix = True
-                break
-            elif dpcm_fix.lower() == 'n':
-                dpcm_fix = False
-                break
-            print("ERROR: Please enter y for yes or n for no!\n")
-        # window mode 0-15.75ms
-        while True:
-            window = readfloat(
-                "Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms)? ")
-            if window < 0 or window > 15.25:
-                print("ERROR: Window out of range [0, 15.75])!\n")
-            elif window % 0.25 != 0:
-                print("ERROR: Window is not a multiple of 0.25!\n")
-            else:
-                break
-        # trigger reset
-        while True:
-            trigReset = raw_input("Reset Console (y/n)? ")
-            if trigReset.lower() == 'y':
-                trigReset = True
-                break
-            elif trigReset.lower() == 'n':
-                trigReset = False
-                break
+        frameNum = get_input(type = 'int',
+            prompt = 'At what frame will this transition occur? ',
+            constraints = {'min': 1})
+        if frameNum == None:
+            return False
+        dpcm_fix = get_input(type = 'bool',
+            prompt = 'Apply DPCM fix (y/n)? ')
+        if dpcm_fix == None:
+            return False
+        window = get_input(type = 'float',
+            prompt = 'Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=' + str(DEFAULTS['windowmode']) + ']? ',
+            default = DEFAULTS['windowmode'],
+            constraints = {'min': 0, 'max': 15.75, 'interval': 0.25})
+        if window == None:
+            return False
+        trigReset = get_input(type = 'bool',
+            prompt = 'Reset Console (y/n)? ')
+        if trigReset == None:
+            return False
         t = Transition()
         t.dpcmFix = dpcm_fix
         t.frameno = frameNum
@@ -1157,19 +1192,28 @@ class CLI(cmd.Cmd):
     def do_new(self, data):
         """Create a new run with parameters specified in the terminal"""
         global selected_run
+
         # get input file
         while True:
-            fileName = raw_input("What is the input file (path to filename) ? ")
+            fileName = get_input(type = 'str',
+                prompt = 'What is the input file (path to filename) ? ')
+            if fileName == None:
+                return False
             if not os.path.isfile(fileName):
-                sys.stderr.write('ERROR: File does not exist!\n')
+                print('ERROR: File does not exist!')
+                continue
             else:
                 break
+
         # get ports to use
         while True:
             try:
                 breakout = True
-                portsList = raw_input("Which physical controller port numbers will you use (1-4, commas between port numbers)? ")
-                portsList = map(int, portsList.split(","))  # splits by commas or spaces, then convert to int
+                portsList = get_input(type = 'str',
+                    prompt = 'Which physical controller port numbers will you use (1-4, commas between port numbers)? ')
+                if portsList == None:
+                    return False
+                portsList = list(map(int, portsList.split(",")))  # splits by commas or spaces, then convert to int
                 numControllers = len(portsList)
                 for port in portsList:
                     if port not in range(1, 5):  # Top of range is exclusive
@@ -1187,16 +1231,18 @@ class CLI(cmd.Cmd):
                     break
             except ValueError:
                 print("ERROR: Please enter integers!\n")
+
         # get controller type
         while True:
             breakout = True
-            controllerType = raw_input("What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score) [def=" + DEFAULTS[0] + "]? ")
-            if controllerType == "":
-                controllerType = DEFAULTS[0]
+            controllerType = get_input(type = 'str',
+                prompt = 'What controller type does this run use ([n]ormal, [y], [m]ultitap, [f]our-score) [def=' + DEFAULTS['contype'] + ']? ',
+                default = DEFAULTS['contype'])
+            if controllerType == None:
+                return False
             if controllerType.lower() not in ["normal", "y", "multitap", "four-score", "n", "m", "f"]:
                 print("ERROR: Invalid controller type!\n")
                 continue
-
             if controllerType.lower() == "normal" or controllerType.lower() == "n":
                 controllerType = CONTROLLER_NORMAL
             elif controllerType.lower() == "y":
@@ -1205,14 +1251,13 @@ class CLI(cmd.Cmd):
                 controllerType = CONTROLLER_MULTITAP
             elif controllerType.lower() == "four-score" or controllerType.lower() == "f":
                 controllerType = CONTROLLER_FOUR_SCORE
-
             for x in range(len(portsList)):
                 if not isConsolePortAvailable(portsList[x], controllerType):  # check ALL lanes
                     print("ERROR: One or more lanes is in use for port " + str(portsList[x]) + "!\n")
                     breakout = False
-
             if breakout:
                 break
+
         # 8, 16, 24, or 32 bit
         while True:
             # determine default controller bit by checking input file type
@@ -1222,94 +1267,65 @@ class CLI(cmd.Cmd):
                 cbd = 8
             if ext == ".r16m":
                 cbd = 16
-            controllerBits = raw_input("How many bits of data per controller (8, 16, 24, or 32) [def=" + str(cbd) + "]? ")
-            if controllerBits == "":
-                controllerBits = cbd
-            if checkint(controllerBits):
-                controllerBits = int(controllerBits)
-            else:
-                continue
+            controllerBits = get_input(type = 'int',
+                prompt = 'How many bits of data per controller (8, 16, 24, or 32) [def=' + str(cbd) + ']? ',
+                default = cbd,
+                constraints = {'min': 8, 'max': 32, 'interval': 8})
+            if controllerBits == None:
+                    return False
             if controllerBits != 8 and controllerBits != 16 and controllerBits != 24 and controllerBits != 32:
                 print("ERROR: Bits must be either 8, 16, 24, or 32!\n")
             else:
                 break
+
         # overread value
-        while True:
-            overread = raw_input("Overread value (0 or 1... if unsure choose 0) [def=" + str(DEFAULTS[1]) + "]? ")
-            if overread == "":
-                overread = DEFAULTS[1]
-            if checkint(overread):
-                overread = int(overread)
-            else:
-                continue
-            if overread != 0 and overread != 1:
-                print("ERROR: Overread be either 0 or 1!\n")
-                continue
-            else:
-                break
+        overread = get_input(type = 'int',
+            prompt = 'Overread value (0 or 1) [def=' + str(DEFAULTS['overread']) + ']? ',
+            default = DEFAULTS['overread'],
+            constraints = {'min': 0, 'max': 1})
+        if overread == None:
+            return False
+
         # DPCM fix
-        while True:
-            dpcm_fix = raw_input("Apply DPCM fix (y/n) [def=" + DEFAULTS[2] + "]? ")
-            if dpcm_fix == "":
-                dpcm_fix = DEFAULTS[2]
-            if dpcm_fix.lower() == 'y':
-                dpcm_fix = True
-                break
-            elif dpcm_fix.lower() == 'n':
-                dpcm_fix = False
-                break
-            print("ERROR: Please enter y for yes or n for no!\n")
+        dpcmFix = get_input(type = 'bool',
+            prompt = 'Apply DPCM fix (y/n) [def=' + str(DEFAULTS['dpcmfix']) + ']? ',
+            default = DEFAULTS['dpcmfix'])
+        if dpcmFix == None:
+            return False
+
         # window mode 0-15.75ms
-        while True:
-            window = raw_input("Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=" + str(DEFAULTS[3]) + "]? ")
-            if window == "":
-                window = DEFAULTS[3]
-            if checkfloat(window):
-                window = float(window)
-            else:
-                continue
-            if window < 0 or window > 15.25:
-                print("ERROR: Window out of range [0, 15.75])!\n")
-            elif window % 0.25 != 0:
-                print("ERROR: Window is not a multiple of 0.25!\n")
-            else:
-                break
+        window = get_input(type = 'float',
+            prompt = 'Window value (0 to disable, otherwise enter time in ms. Must be multiple of 0.25ms. Must be between 0 and 15.75ms) [def=' + str(DEFAULTS['windowmode']) + ']? ',
+            default = DEFAULTS['windowmode'],
+            constraints = {'min': 0, 'max': 15.75, 'interval': 0.25})
+        if window == None:
+            return False
+
         # dummy frames
-        while True:
-            try:
-                dummyFrames = raw_input("Number of blank input frames to prepend [def=" + str(DEFAULTS[4]) + "]? ")
-                if dummyFrames == "":
-                    dummyFrames = DEFAULTS[4]
-                if checkint(dummyFrames):
-                    dummyFrames = int(dummyFrames)
-                else:
-                    continue
-                if dummyFrames < 0:
-                    print("ERROR: Please enter a positive number!\n")
-                    continue
-                else:
-                    break
-            except ValueError:
-                print("ERROR: Please enter integers!\n")
+        dummyFrames = get_input(type = 'int',
+            prompt = 'Number of blank input frames to prepend [def=' + str(DEFAULTS['dummyframes']) + ']? ',
+            default = DEFAULTS['dummyframes'],
+            constraints = {'min': 0})
+        if dummyFrames == None:
+            return False
 
         # create TASRun object and assign it to our global, defined above
-        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcm_fix)
+        tasrun = TASRun(numControllers, portsList, controllerType, controllerBits, overread, window, fileName, dummyFrames, dpcmFix)
 
+        # create the RunStatus object
         rs = RunStatus()
         rs.customCommand = setupCommunication(tasrun)
         rs.inputBuffer = tasrun.getInputBuffer(rs.customCommand)
         rs.tasRun = tasrun
         rs.isRunModified = True
-        rs.dpcmState = dpcm_fix
+        rs.dpcmState = dpcmFix
         rs.windowState = window
         # Remove Extension from filename 3 times then add ".tcf" to generate a Default Save Name
         rs.defaultSave = os.path.splitext(os.path.splitext(os.path.splitext(fileName)[0])[0])[0] + ".tcf"
         runStatuses.append(rs)
 
         selected_run = len(runStatuses) - 1
-
         send_frames(selected_run, prebuffer)
-
         print("Run is ready to go!")
 
     def do_EOF(self, line):
@@ -1319,50 +1335,7 @@ class CLI(cmd.Cmd):
     def postloop(self):
         print
 
-def handleTransition(run_index, transition):
-    if runStatuses[run_index].dpcmState != transition.dpcmFix:
-        for port in runStatuses[run_index].tasRun.portsList:
-            # enable the console ports
-            command = "sp"
-            command += str(port)  # should look like 'sp1' now
-            portData = runStatuses[run_index].tasRun.controllerType
-            if transition.dpcmFix:
-                portData += 128  # add the flag for the 8th bit
-            ser.write(command + chr(portData))
-            runStatuses[run_index].dpcmState = transition.dpcmFix
-    if runStatuses[run_index].windowState != transition.window:
-        controllers = list('00000000')
-        for port in runStatuses[run_index].tasRun.portsList:
-            if runStatuses[run_index].tasRun.controllerType == CONTROLLER_NORMAL:
-                limit = 1
-            elif runStatuses[run_index].tasRun.controllerType == CONTROLLER_MULTITAP:
-                limit = 4
-            else:
-                limit = 2
-            for counter in range(limit):
-                controllers[8 - lanes[port][counter]] = '1'  # this is used later for the custom stream command
-        controllerMask = "".join(controllers)  # convert binary to string
-
-        # setup events #s e lane_num byte controllerMask
-        command = 'se' + str(min(runStatuses[run_index].tasRun.portsList))
-        # do first byte
-        byte = list('{0:08b}'.format(
-            int(transition.window / 0.25)))  # create padded bytestring, convert to list for manipulation
-        byte[0] = '1'  # enable flag
-        bytestring = "".join(byte)  # turn back into string
-        ser.write(command + chr(int(bytestring, 2)) + chr(int(controllerMask, 2)))
-        runStatuses[run_index].windowState = transition.window
-    try:
-        if transition.trigReset:
-            if TASLINK_CONNECTED:
-                ser.write("sd1")
-                time.sleep(0.2)
-                ser.write("sd0")
-    except AttributeError:
-        print("WARN: HANDLE MISSING RESET FLAG FOR TRANSITION")
-
-# ----- MAIN EXECUTION BEGINS HERE -----
-
+### MAIN EXECUTION BEGINS HERE ###
 if len(sys.argv) < 2:
     sys.stderr.write('Usage: ' + sys.argv[0] + ' <interface>\n\n')
     sys.stderr.write('OR: ' + sys.argv[0] + ' <interface> <file1> <file2> ... \n\n')
@@ -1377,7 +1350,8 @@ if TASLINK_CONNECTED:
 
     # ensure we start with all events disabled
     for x in range(1,5):
-        ser.write("se"+str(x)+chr(0)+chr(0))
+        string = "se"+str(x)+chr(0)+chr(0)
+        ser.write(string.encode('latin-1'))
 
 if len(sys.argv) > 2:  # load some initial files!
     for filename in sys.argv[2:]:
@@ -1386,6 +1360,8 @@ if len(sys.argv) > 2:  # load some initial files!
             continue
         load(filename)
 
+# Catch Ctrl+C from interupting the mainloop
+signal.signal(signal.SIGINT,signal.SIG_IGN)
 # start CLI in its own thread
 cli = CLI()
 t = threading.Thread(target=cli.cmdloop)  # no parens on cmdloop is important... otherwise it blocks
@@ -1401,7 +1377,8 @@ if TASLINK_CONNECTED and not t.isAlive():
     ser.close()
     sys.exit(0)
 
-# the run
+### MAIN LOOP ###
+
 if TASLINK_CONNECTED:
     while t.isAlive():
         if not t.isAlive():
@@ -1416,7 +1393,7 @@ if TASLINK_CONNECTED:
             c += ser.read(numBytes)
             if numBytes > 60:
                 print ("WARNING: High frame read detected: " + str(numBytes))
-        latchCounts = [-1, c.count('f'), c.count('g'), c.count('h'), c.count('i')]
+        latchCounts = [-1, c.count(b'f'), c.count(b'g'), c.count(b'h'), c.count(b'i')]
 
         for run_index, runstatus in enumerate(runStatuses):
             run = runstatus.tasRun
